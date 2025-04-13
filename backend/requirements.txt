@@ -4,8 +4,8 @@ Flask-JWT-Extended
 Flask-RESTful
 Flask-Migrate
 Werkzeug==2.2.2
-psycopg2
 psycopg2-binary
+psycopg2
 boto3
 python-dotenv
 Flask-CORS
