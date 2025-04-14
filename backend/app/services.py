@@ -9,14 +9,18 @@ def get_s3_client():
     aws_secret_key = current_app.config.get('AWS_SECRET_KEY')
     if not aws_access_key or not aws_secret_key:
         raise ValueError("AWS credentials are not properly configured.")
-    s3_config = BotoConfig(signature_version='s3v4')
+    s3_config = BotoConfig(
+        signature_version='s3v4',
+        connect_timeout=30,
+        read_timeout=120
+    )
     return boto3.client(
         's3',
         region_name=current_app.config['AWS_REGION'],
         aws_access_key_id=aws_access_key,
         aws_secret_access_key=aws_secret_key,
         config=s3_config,
-        endpoint_url=f"https://s3.{current_app.config['AWS_REGION']}.amazonaws.com"
+        endpoint_url = f"https://s3.{current_app.config['AWS_REGION']}.amazonaws.com"
     )
 
 
