@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -9,7 +9,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     files = db.relationship('File', backref='owner', lazy=True)
 
@@ -27,8 +27,8 @@ class File(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     s3_key = db.Column(db.String(255), nullable=False)
     size = db.Column(db.Integer)
-    upload_time = db.Column(db.DateTime, default=datetime.utcnow)
-    last_modified = db.Column(db.DateTime, default=datetime.utcnow)
+    upload_time = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    last_modified = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Define a bidirectional relationship with SharedFile.
     shared_with = db.relationship('SharedFile', back_populates='file', cascade="all, delete-orphan", lazy=True)
@@ -40,7 +40,7 @@ class SharedFile(db.Model):
     file_id = db.Column(db.Integer, db.ForeignKey('file.id'), nullable=False)
     shared_with_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     access_level = db.Column(db.String(20), default='read')
-    share_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    share_timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     file = db.relationship('File', back_populates='shared_with')
     # Add a relationship to fetch the user object for 'shared_with_user_id'
