@@ -11,6 +11,8 @@ import '../App.css';
 
 function Dashboard() {
   const navigate = useNavigate();
+  const token = localStorage.getItem('access_token');
+
   const [files, setFiles] = useState({ owned_files: [], shared_files: [] });
   const [shareModalFile, setShareModalFile] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
@@ -18,8 +20,47 @@ function Dashboard() {
   const [showUsersModal, setShowUsersModal] = useState(false);
   const [currentSharedUsers, setCurrentSharedUsers] = useState([]);
 
-  // Check if the user is logged in by looking for the access token.
-  const token = localStorage.getItem('access_token');
+  const fetchUserData = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/user`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsername(data.username);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  const fetchFiles = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/files`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setFiles(data);
+      }
+    } catch (err) {
+      console.error('Error fetching files:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) return;
+    fetchUserData();
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetchFiles();
+    const handleClickOutside = () => setContextMenu(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [token]);
+
   if (!token) {
     return (
         <div className="dashboard container" style={{ padding: '20px', textAlign: 'center' }}>
@@ -47,78 +88,29 @@ function Dashboard() {
     );
   }
 
-  // Fetch user data (like username) when logged in
-  const fetchUserData = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/user`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUsername(data.username);
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  // Fetches list of files for the logged-in user
-  const fetchFiles = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/files`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setFiles(data);
-      }
-    } catch (err) {
-      console.error('Error fetching files:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchFiles();
-    // Close context menu if the user clicks elsewhere
-    const handleClickOutside = () => setContextMenu(null);
-    window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
-  }, []);
-
-  // Logs out the user
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     navigate('/');
   };
 
-  // Right-click context menu
   const handleFileRightClick = (file, event, isOwner) => {
     event.preventDefault();
     setContextMenu({
       x: event.pageX,
       y: event.pageY,
       file,
-      isOwner
+      isOwner,
     });
   };
 
   const handleDotsClick = (file, event, isOwner) => {
-    event.stopPropagation(); // Prevent parent clicks from interfering
+    event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
-
     setContextMenu({
       x: rect.right + window.scrollX,
       y: rect.top + window.scrollY,
       file,
-      isOwner
+      isOwner,
     });
   };
 
@@ -127,7 +119,6 @@ function Dashboard() {
     setShowUsersModal(true);
   };
 
-  // Download action
   const handleDownload = async (file) => {
     try {
       const res = await fetch(`${API_BASE_URL}/download/${file.id}`, {
@@ -147,12 +138,10 @@ function Dashboard() {
     }
   };
 
-  // Share action (opens modal)
   const handleShare = (file) => {
     setShareModalFile(file);
   };
 
-  // Handles ShareModal submission
   const handleShareSubmit = async (file, recipientEmail) => {
     try {
       const res = await fetch(`${API_BASE_URL}/share`, {
@@ -183,13 +172,13 @@ function Dashboard() {
       const res = await fetch(`${API_BASE_URL}/files/${file.id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+        },
       });
       const data = await res.json();
       if (res.ok) {
         alert('File deleted successfully');
-        fetchFiles(); // refresh the file list
+        fetchFiles();
       } else {
         alert(data.msg || 'Error deleting file');
       }
@@ -200,18 +189,17 @@ function Dashboard() {
 
   const handleLeave = async (file) => {
     if (!window.confirm(`Are you sure you want to leave collaboration for "${file.filename}"?`)) return;
-
     try {
       const res = await fetch(`${API_BASE_URL}/files/${file.id}/leave`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+        },
       });
       const data = await res.json();
       if (res.ok) {
         alert('You have left the collaboration');
-        fetchFiles(); // Refresh the file list
+        fetchFiles();
       } else {
         alert(data.msg || 'Error leaving collaboration');
       }
@@ -226,7 +214,7 @@ function Dashboard() {
           <div>
             <h2>Dashboard</h2>
             {username && (
-                <p style={{marginTop: '5px', fontSize: '0.95rem', color: '#555'}}>
+                <p style={{ marginTop: '5px', fontSize: '0.95rem', color: '#555' }}>
                   Logged in as: <strong>{username}</strong>
                 </p>
             )}
@@ -237,7 +225,7 @@ function Dashboard() {
         </div>
 
         <div className="file-upload-section">
-          <FileUpload onUploadComplete={fetchFiles}/>
+          <FileUpload onUploadComplete={fetchFiles} />
         </div>
 
         <div className="files-wrapper">
@@ -258,15 +246,17 @@ function Dashboard() {
                     </div>
                     {file.shared_with_users && file.shared_with_users.length > 0 && (
                         <div style={{ marginBottom: '6px' }}>
-                          <p><strong>Shared with: </strong>
+                          <p>
+                            <strong>Shared with: </strong>
                             {file.shared_with_users.slice(0, 3).join(', ')}
                             {file.shared_with_users.length > 3 && (
                                 <>
-                                  , <span
-                                    style={{ color: 'blue', cursor: 'pointer' }}
-                                    onClick={() => handleShowMore(file.shared_with_users)}
-                                >
-                                  more...
+                                  ,{' '}
+                                  <span
+                                      style={{ color: 'blue', cursor: 'pointer' }}
+                                      onClick={() => handleShowMore(file.shared_with_users)}
+                                  >
+                                    more...
                                   </span>
                                 </>
                             )}
@@ -277,7 +267,7 @@ function Dashboard() {
                       <strong>Uploaded:</strong>{' '}
                       {new Date(file.upload_time).toLocaleString('en-US', {
                         dateStyle: 'short',
-                        timeStyle: 'short'
+                        timeStyle: 'short',
                       })}
                     </p>
                   </div>
@@ -301,33 +291,41 @@ function Dashboard() {
                       </div>
                     </div>
                     {file.shared_with_users && file.shared_with_users.length > 0 && (
-                        <div style={{ marginBottom: '6px' }}>
-                          <p><strong>Shared with: </strong>
+                        <div style={{marginBottom: '6px'}}>
+                          <p>
+                            <strong>Shared with: </strong>
                             {file.shared_with_users.slice(0, 3).join(', ')}
                             {file.shared_with_users.length > 3 && (
                                 <>
-                                  , <span
-                                    style={{ color: 'blue', cursor: 'pointer' }}
-                                    onClick={() => handleShowMore(file.shared_with_users)}
-                                >
-                                  more...
-                                  </span>
+                                  ,{' '}
+                                  <span
+                                      style={{color: 'blue', cursor: 'pointer'}}
+                                      onClick={() => handleShowMore(file.shared_with_users)}
+                                  >
+                            more...
+                          </span>
                                 </>
                             )}
                           </p>
-                          </div>
+                        </div>
                     )}
-                    <p><strong>Shared by:</strong> {file.shared_by}</p>
-                    <p><strong>Shared on:</strong> {new Date(file.shared_at).toLocaleString('en-US', {
-                      dateStyle: 'short',
-                      timeStyle: 'short'
-                    })}</p>
+                    <p>
+                      <strong>Shared by:</strong> {file.shared_by}
+                    </p>
+                    <p>
+                      <strong>Shared on:</strong>{' '}
+                      {new Date(file.shared_at).toLocaleString('en-US', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })}
+                    </p>
                   </div>
               ))}
             </div>
           </section>
         </div>
 
+        {/* CONTEXT MENU */}
         {contextMenu && (
             <ContextMenu
                 x={contextMenu.x}
@@ -351,10 +349,7 @@ function Dashboard() {
         )}
 
         {showUsersModal && (
-            <UsersModal
-                users={currentSharedUsers}
-                onClose={() => setShowUsersModal(false)}
-            />
+            <UsersModal users={currentSharedUsers} onClose={() => setShowUsersModal(false)}/>
         )}
       </div>
   );
