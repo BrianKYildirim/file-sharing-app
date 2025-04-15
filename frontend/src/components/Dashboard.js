@@ -374,7 +374,6 @@ function Dashboard() {
                 </section>
             </div>
 
-            {/* CONTEXT MENU */}
             {contextMenu && (
                 <ContextMenu
                     x={contextMenu.x}
