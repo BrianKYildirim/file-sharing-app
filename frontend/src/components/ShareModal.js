@@ -4,9 +4,11 @@ import React, {useState} from 'react';
 import '../App.css';
 
 function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}) {
+    // State for multiple email input fields
     const [recipientEmails, setRecipientEmails] = useState(['']);
     const [currentSharedUsers, setCurrentSharedUsers] = useState(sharedUsers);
 
+    // Remove access from a user who already has it (the unshare logic)
     const handleRemoveUser = async (userId) => {
         try {
             const res = await fetch('/api/unshare', {
@@ -19,6 +21,7 @@ function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}
             });
             const data = await res.json();
             if (res.ok) {
+                // Remove that user from local state
                 setCurrentSharedUsers(prev => prev.filter(u => u.id !== userId));
                 onUnshareSuccess && onUnshareSuccess();
             } else {
@@ -40,27 +43,29 @@ function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}
         setRecipientEmails([...recipientEmails, '']);
     };
 
-    const handleShareClick = () => {
-        // Basic email validation & pass to parent onShare
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const validEmails = [];
-        const invalidEmails = [];
-
-        recipientEmails.forEach(email => {
-            const trimmed = email.trim();
-            if (trimmed === '') return; // skip blank fields
-            if (emailRegex.test(trimmed)) {
-                validEmails.push(trimmed);
-            } else {
-                invalidEmails.push(trimmed);
-            }
-        });
-
-        if (validEmails.length === 0) {
-            alert("Please enter at least one valid email.");
+    // If no email is entered, close the modal. Otherwise, run the share logic.
+    const handleOkayClick = () => {
+        // Trim and filter out empty fields
+        const trimmed = recipientEmails.map(e => e.trim()).filter(e => e !== '');
+        if (trimmed.length === 0) {
+            // User did not enter any valid text, simply close
+            onClose();
             return;
         }
 
+        // Otherwise, separate emails into valid vs. invalid (format)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const validEmails = [];
+        const invalidEmails = [];
+        trimmed.forEach(email => {
+            if (emailRegex.test(email)) {
+                validEmails.push(email);
+            } else {
+                invalidEmails.push(email);
+            }
+        });
+
+        // Pass arrays to the parent’s onShare logic
         onShare(file, validEmails, invalidEmails);
     };
 
@@ -69,6 +74,7 @@ function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}
             <div className="modal-content">
                 <h3 style={{marginBottom: '20px'}}>Share "{file.filename}"</h3>
 
+                {/* Already-shared users, each with an 'X' to unshare */}
                 {currentSharedUsers && currentSharedUsers.length > 0 && (
                     <div style={{marginBottom: '20px'}}>
                         <p style={{fontWeight: 'bold', marginBottom: '8px'}}>Currently shared with:</p>
@@ -103,6 +109,7 @@ function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}
                     </div>
                 )}
 
+                {/* Input fields for new recipients */}
                 {recipientEmails.map((email, index) => (
                     <input
                         key={index}
@@ -119,7 +126,6 @@ function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}
                         }}
                     />
                 ))}
-
                 <button
                     onClick={addRecipientField}
                     style={{
@@ -135,9 +141,10 @@ function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}
                     Add more recipients
                 </button>
 
+                {/* Bottom buttons: Okay and Cancel */}
                 <div style={{display: 'flex', justifyContent: 'flex-end'}}>
                     <button
-                        onClick={handleShareClick}
+                        onClick={handleOkayClick}
                         style={{
                             marginRight: '10px',
                             padding: '8px 12px',
@@ -148,7 +155,7 @@ function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}
                             cursor: 'pointer'
                         }}
                     >
-                        Share
+                        Okay
                     </button>
                     <button
                         onClick={onClose}
