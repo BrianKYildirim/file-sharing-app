@@ -3,32 +3,52 @@
 import React, {useState} from 'react';
 import '../App.css';
 
-function ShareModal({file, onClose, onShare}) {
-    // Start with one empty input field.
+function ShareModal({file, sharedUsers = [], onClose, onShare, onUnshareSuccess}) {
     const [recipientEmails, setRecipientEmails] = useState(['']);
+    const [currentSharedUsers, setCurrentSharedUsers] = useState(sharedUsers);
 
-    // Update an email in the list.
+    const handleRemoveUser = async (userId) => {
+        try {
+            const res = await fetch('/api/unshare', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                },
+                body: JSON.stringify({file_id: file.id, user_id: userId})
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setCurrentSharedUsers(prev => prev.filter(u => u.id !== userId));
+                onUnshareSuccess && onUnshareSuccess();
+            } else {
+                alert(data.msg || 'Error removing access.');
+            }
+        } catch (err) {
+            console.error('Error removing access:', err);
+            alert('Error removing access.');
+        }
+    };
+
     const handleEmailChange = (index, value) => {
         const newRecipients = [...recipientEmails];
         newRecipients[index] = value;
         setRecipientEmails(newRecipients);
     };
 
-    // Add a new empty email field.
     const addRecipientField = () => {
         setRecipientEmails([...recipientEmails, '']);
     };
 
-    // When the user clicks "Share", split the emails into those with valid format and those invalid.
     const handleShareClick = () => {
-        // A simple email validation regex.
+        // Basic email validation & pass to parent onShare
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const validEmails = [];
         const invalidEmails = [];
 
         recipientEmails.forEach(email => {
             const trimmed = email.trim();
-            if (trimmed === "") return; // Skip blank fields.
+            if (trimmed === '') return; // skip blank fields
             if (emailRegex.test(trimmed)) {
                 validEmails.push(trimmed);
             } else {
@@ -41,7 +61,6 @@ function ShareModal({file, onClose, onShare}) {
             return;
         }
 
-        // Pass the file, valid emails array, and the invalid (format) emails.
         onShare(file, validEmails, invalidEmails);
     };
 
@@ -49,6 +68,41 @@ function ShareModal({file, onClose, onShare}) {
         <div className="modal-overlay">
             <div className="modal-content">
                 <h3 style={{marginBottom: '20px'}}>Share "{file.filename}"</h3>
+
+                {currentSharedUsers && currentSharedUsers.length > 0 && (
+                    <div style={{marginBottom: '20px'}}>
+                        <p style={{fontWeight: 'bold', marginBottom: '8px'}}>Currently shared with:</p>
+                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                            {currentSharedUsers.map(user => (
+                                <div
+                                    key={user.id}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        backgroundColor: '#ffcc66',
+                                        borderRadius: '20px',
+                                        padding: '6px 12px'
+                                    }}
+                                >
+                                    <span style={{marginRight: '8px'}}>{user.email}</span>
+                                    <button
+                                        onClick={() => handleRemoveUser(user.id)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold',
+                                            fontSize: '1rem'
+                                        }}
+                                    >
+                                        &#x2715;
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {recipientEmails.map((email, index) => (
                     <input
                         key={index}
@@ -65,6 +119,7 @@ function ShareModal({file, onClose, onShare}) {
                         }}
                     />
                 ))}
+
                 <button
                     onClick={addRecipientField}
                     style={{
@@ -79,6 +134,7 @@ function ShareModal({file, onClose, onShare}) {
                 >
                     Add more recipients
                 </button>
+
                 <div style={{display: 'flex', justifyContent: 'flex-end'}}>
                     <button
                         onClick={handleShareClick}

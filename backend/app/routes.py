@@ -113,7 +113,14 @@ def list_files():
         'filename': f.filename,
         's3_key': f.s3_key,
         'upload_time': f.upload_time.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
-        'shared_with_users': [sf.shared_with_user.username for sf in f.shared_with]
+        'shared_with_users': [
+            {
+                'id': sf.shared_with_user.id,
+                'email': sf.shared_with_user.email,
+                'username': sf.shared_with_user.username
+            }
+            for sf in f.shared_with
+        ]
     } for f in owned_files]
 
     shared_list = [{
@@ -172,6 +179,32 @@ def share_file():
     db.session.commit()
 
     return success_response('File shared successfully')
+
+
+@api_bp.route('/unshare', methods=['POST'])
+@jwt_required()
+def unshare_file():
+    data = request.get_json(silent=True)
+    if not data:
+        return error_response('Invalid JSON input', 400)
+    file_id = data.get('file_id')
+    user_id_to_remove = data.get('user_id')
+    if not file_id or not user_id_to_remove:
+        return error_response('Missing file_id or user_id', 400)
+
+    file_obj = File.query.get_or_404(file_id)
+
+    current_user_id = int(get_jwt_identity())
+    if file_obj.user_id != current_user_id:
+        return error_response('Only owners can unshare files', 403)
+
+    shared_record = SharedFile.query.filter_by(file_id=file_id, shared_with_user_id=user_id_to_remove).first()
+    if not shared_record:
+        return error_response('User does not have access or it was never shared with them', 404)
+
+    db.session.delete(shared_record)
+    db.session.commit()
+    return success_response('User has been removed from the file collaboration')
 
 
 @api_bp.route('/files/<int:file_id>', methods=['DELETE'])

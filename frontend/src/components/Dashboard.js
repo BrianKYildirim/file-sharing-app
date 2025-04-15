@@ -391,11 +391,12 @@ function Dashboard() {
             {shareModalFile && (
                 <ShareModal
                     file={shareModalFile}
+                    sharedUsers={shareModalFile.shared_with_users}
                     onClose={() => setShareModalFile(null)}
                     onShare={handleShareSubmit}
+                    onUnshareSuccess={fetchFiles}
                 />
             )}
-
 
             {showUsersModal && (
                 <UsersModal users={currentSharedUsers} onClose={() => setShowUsersModal(false)}/>
