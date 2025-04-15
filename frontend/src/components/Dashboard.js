@@ -247,7 +247,10 @@ function Dashboard() {
                     )}
                     <p>
                       <strong>Uploaded:</strong>{' '}
-                      {new Date(file.upload_time).toLocaleString()}
+                      {new Date(file.upload_time).toLocaleString('en-US', {
+                        dateStyle: 'short',
+                        timeStyle: 'short'
+                      })}
                     </p>
                   </div>
               ))}
@@ -286,7 +289,10 @@ function Dashboard() {
                         </div>
                     )}
                     <p><strong>Shared by:</strong> {file.shared_by}</p>
-                    <p><strong>Shared on:</strong> {new Date(file.shared_at).toLocaleString()}</p>
+                    <p><strong>Shared on:</strong> {new Date(file.shared_at).toLocaleString('en-US', {
+                        dateStyle: 'short',
+                        timeStyle: 'short'
+                      })}</p>
                   </div>
         ))}
       </div>

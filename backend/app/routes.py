@@ -5,6 +5,8 @@ from .models import User, File, SharedFile
 from . import db
 from .services import upload_file_to_s3, generate_presigned_url
 import uuid
+from datetime import timezone
+import traceback
 
 api_bp = Blueprint('api_bp', __name__)
 
@@ -21,23 +23,29 @@ def success_response(message, code=200, **kwargs):
 
 @api_bp.route('/register', methods=['POST'])
 def register():
-    data = request.get_json(silent=True)
-    if not data:
-        return error_response('Invalid JSON input', 400)
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-    if not username or not email or not password:
-        return error_response('Missing required data', 400)
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return error_response('Invalid JSON input', 400)
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        if not username or not email or not password:
+            return error_response('Missing required data', 400)
 
-    if User.query.filter((User.username == username) | (User.email == email)).first():
-        return error_response('User already exists', 409)
+        if User.query.filter((User.username == username) | (User.email == email)).first():
+            return error_response('User already exists', 409)
 
-    user = User(username=username, email=email)
-    user.set_password(password)
-    db.session.add(user)
-    db.session.commit()
-    return success_response('User registered', 201)
+        user = User(username=username, email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return success_response('User registered', 201)
+
+    except Exception as e:
+        current_app.logger.error("Registration error: %s", str(e), exc_info=True)
+        print("DEBUG TRACEBACK:\n", traceback.format_exc())
+        return error_response("Internal server error", 500)
 
 
 @api_bp.route('/login', methods=['POST'])
@@ -104,7 +112,7 @@ def list_files():
         'id': f.id,
         'filename': f.filename,
         's3_key': f.s3_key,
-        'upload_time': f.upload_time.isoformat(),
+        'upload_time': f.upload_time.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'shared_with_users': [sf.shared_with_user.username for sf in f.shared_with]
     } for f in owned_files]
 
@@ -113,7 +121,7 @@ def list_files():
         'filename': share.file.filename,
         's3_key': share.file.s3_key,
         'shared_by': share.file.owner.username if share.file.owner else str(share.file.user_id),
-        'shared_at': share.share_timestamp.isoformat(),
+        'shared_at': share.share_timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'access_level': share.access_level
     } for share in shared]
 
