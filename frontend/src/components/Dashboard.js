@@ -142,27 +142,56 @@ function Dashboard() {
     setShareModalFile(file);
   };
 
-  const handleShareSubmit = async (file, recipientEmail) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/share`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ file_id: file.id, recipient_email: recipientEmail }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert('File shared successfully!');
-        fetchFiles();
-      } else {
-        alert(data.msg || 'Error sharing file.');
+  const formatList = (list) => {
+    if (list.length === 1) return list[0];
+    else if (list.length === 2) return list[0] + " and " + list[1];
+    else return list.slice(0, list.length - 1).join(", ") + ", and " + list[list.length - 1];
+  };
+
+  const handleShareSubmit = async (file, validEmails, invalidFormatEmails) => {
+    const successfulUsernames = [];
+    // Start failedEmails with those that failed the basic format check.
+    const failedEmails = [...invalidFormatEmails];
+
+    // Process each valid email.
+    for (const email of validEmails) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/share`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          },
+          body: JSON.stringify({file_id: file.id, recipient_email: email})
+        });
+        const data = await res.json();
+        if (res.ok) {
+          // Expect the backend to return the shared username.
+          successfulUsernames.push(data.shared_username || email);
+        } else {
+          // On error (like user not found), consider the email failed.
+          failedEmails.push(email);
+        }
+      } catch (error) {
+        console.error('Error sharing with', email, error);
+        failedEmails.push(email);
       }
-    } catch (error) {
-      console.error('Error sharing file:', error);
-      alert('Error sharing file.');
     }
+
+    let successMessage = "";
+    let failureMessage = "";
+    if (successfulUsernames.length > 0) {
+      successMessage = "Shared successfully with: " + formatList(successfulUsernames) + ".";
+    }
+    if (failedEmails.length > 0) {
+      failureMessage = "Failed to find a user associated with " + (failedEmails.length === 1 ? "this email: " : "these emails: ") + formatList(failedEmails) + ".";
+    }
+    const finalMessage = (successMessage && failureMessage)
+        ? (successMessage + "\n" + failureMessage)
+        : (successMessage || failureMessage);
+    alert(finalMessage);
+    // Refresh the file list and close the modal.
+    fetchFiles();
     setShareModalFile(null);
   };
 
@@ -347,6 +376,7 @@ function Dashboard() {
                 onShare={handleShareSubmit}
             />
         )}
+
 
         {showUsersModal && (
             <UsersModal users={currentSharedUsers} onClose={() => setShowUsersModal(false)}/>
