@@ -295,23 +295,26 @@ function Dashboard() {
                                 </div>
                                 {file.shared_with_users && file.shared_with_users.length > 0 && (
                                     <div style={{marginBottom: '6px'}}>
-                                        <p>
-                                            <strong>Shared with: </strong>
-                                            {file.shared_with_users.slice(0, 3).join(', ')}
+                                        <p><strong>Shared with: </strong>
+                                            {file.shared_with_users
+                                                .slice(0, 3)
+                                                .map(userObj => userObj.username)
+                                                .join(', ')
+                                            }
                                             {file.shared_with_users.length > 3 && (
                                                 <>
-                                                    ,{' '}
-                                                    <span
-                                                        style={{color: 'blue', cursor: 'pointer'}}
-                                                        onClick={() => handleShowMore(file.shared_with_users)}
-                                                    >
-                                    more...
-                                  </span>
+                                                    , <span
+                                                    style={{color: 'blue', cursor: 'pointer'}}
+                                                    onClick={() => handleShowMore(file.shared_with_users)}
+                                                >
+                                                    more...
+                                                    </span>
                                                 </>
                                             )}
                                         </p>
                                     </div>
                                 )}
+
                                 <p>
                                     <strong>Uploaded:</strong>{' '}
                                     {new Date(file.upload_time).toLocaleString('en-US', {
