@@ -161,7 +161,7 @@ def share_file():
     if not recipient:
         return error_response('Recipient not found', 404)
     if recipient.id == current_user_id:
-        return error_response('Cannot share file with yourself', 400)
+        return error_response('The recipient already has access to this file', 400)
 
     existing_share = SharedFile.query.filter_by(file_id=file_id, shared_with_user_id=recipient.id).first()
     if existing_share:
