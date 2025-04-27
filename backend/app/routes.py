@@ -1,12 +1,13 @@
 # backend/app/routes.py
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from .models import User, File, SharedFile
+from .models import User, File, SharedFile, EmailVerification
 from . import db
-from .services import upload_file_to_s3, generate_presigned_url
+from .services import upload_file_to_s3, generate_presigned_url, generate_code,send_verification_email
 import uuid
-from datetime import timezone
+from datetime import timezone, timedelta, datetime
 import traceback
+from werkzeug.security import generate_password_hash
 
 api_bp = Blueprint('api_bp', __name__)
 
@@ -46,6 +47,82 @@ def register():
         current_app.logger.error("Registration error: %s", str(e), exc_info=True)
         print("DEBUG TRACEBACK:\n", traceback.format_exc())
         return error_response("Internal server error", 500)
+
+
+@api_bp.route('/register-initiate', methods=['POST'])
+def register_initiate():
+    data = request.get_json(silent=True) or {}
+    u, e, pw = data.get('username'), data.get('email'), data.get('password')
+    if not u or not e or not pw:
+        return error_response('Missing fields', 400)
+    # Prevent duplicate verifications or real users
+    if User.query.filter_by(email=e).first() or EmailVerification.query.filter_by(email=e).first():
+        return error_response('Email already in use', 409)
+    # Create verification record
+    code = generate_code()
+    expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+    ev = EmailVerification(
+        username=u,
+        email=e,
+        password_hash=generate_password_hash(pw),
+        code=code,
+        expires_at=expires
+    )
+    db.session.add(ev)
+    db.session.commit()
+    
+    try:
+        send_verification_email(e, code)
+    except Exception as ex:
+        current_app.logger.error("Email send failed", exc_info=True)
+        return error_response('Failed to send verification email', 500)
+    return success_response('Verification code sent', 200, verification_id=ev.id)
+
+@api_bp.route('/register-verify', methods=['POST'])
+def register_verify():
+    data = request.get_json(silent=True) or {}
+    vid, input_code = data.get('verification_id'), data.get('code')
+    ev = EmailVerification.query.get(vid) or None
+    if not ev:
+        return error_response('Invalid verification session', 400)
+    if datetime.now(timezone.utc) > ev.expires_at:
+        return error_response('Verification code expired', 400)
+    if ev.attempts >= 5:
+        return error_response('Too many attempts', 429)
+    ev.attempts += 1
+    if ev.code != input_code:
+        db.session.commit()
+        return error_response('Incorrect code', 401)
+    # Create real user
+    user = User(username=ev.username, email=ev.email)
+    user.password_hash = ev.password_hash
+    db.session.add(user)
+    # Cleanup
+    db.session.delete(ev)
+    db.session.commit()
+    return success_response('Registration complete', 201)
+
+@api_bp.route('/register-resend', methods=['POST'])
+def register_resend():
+    data = request.get_json(silent=True) or {}
+    vid = data.get('verification_id')
+    ev = EmailVerification.query.get(vid) or None
+    if not ev:
+        return error_response('Invalid session', 400)
+    now = datetime.now(timezone.utc)
+    if (now - ev.last_sent) < timedelta(seconds=60):
+        return error_response('Please wait before resending', 429)
+    # Generate & send new code
+    ev.code = generate_code()
+    ev.expires_at = now + timedelta(minutes=10)
+    ev.last_sent = now
+    ev.attempts = 0
+    db.session.commit()
+    try:
+        send_verification_email(ev.email, ev.code)
+    except:
+        return error_response('Resend failed', 500)
+    return success_response('Code resent', 200)
 
 
 @api_bp.route('/login', methods=['POST'])

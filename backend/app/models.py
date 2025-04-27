@@ -3,6 +3,19 @@ from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
+class EmailVerification(db.Model):
+    __tablename__ = 'email_verification'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(120), nullable=False, unique=True)
+    password_hash = db.Column(db.String(256), nullable=False)
+    code = db.Column(db.String(6), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime, nullable=False)
+    last_sent = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    attempts = db.Column(db.Integer, default=0)
+
+
 class User(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)

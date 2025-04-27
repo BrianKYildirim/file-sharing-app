@@ -2,6 +2,9 @@
 import boto3
 from botocore.config import Config as BotoConfig
 from flask import current_app
+import random, string
+import smtplib
+from email.message import EmailMessage
 
 
 def get_s3_client():
@@ -43,3 +46,20 @@ def generate_presigned_url(s3_key, expiration=3600):
         Params={'Bucket': bucket_name, 'Key': s3_key},
         ExpiresIn=expiration
     )
+
+
+def generate_code(length=6):
+    return ''.join(random.choices(string.digits, k=length))
+
+
+def send_verification_email(to_email, code):
+    msg = EmailMessage()
+    msg['Subject'] = 'Your Verification Code'
+    msg['From'] = current_app.config['EMAIL_SENDER']
+    msg['To'] = to_email
+    msg.set_content(f"Your verification code is: {code}")
+    # Example with SMTP—configure in your .env and Config
+    with smtplib.SMTP(current_app.config['SMTP_HOST'], current_app.config['SMTP_PORT']) as smtp:
+        smtp.starttls()
+        smtp.login(current_app.config['SMTP_USER'], current_app.config['SMTP_PASS'])
+        smtp.send_message(msg)

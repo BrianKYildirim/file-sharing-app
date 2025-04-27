@@ -23,3 +23,21 @@ class Config:
     AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
     AWS_SECRET_KEY = os.environ.get('AWS_SECRET_KEY')
     AWS_REGION = os.environ.get('AWS_REGION', 'us-east-2')
+
+    SMTP_HOST = os.environ.get('SMTP_HOST')
+    if not SMTP_HOST:
+        raise ValueError("No SMTP_HOST provided in environment variables.")
+
+    SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+
+    SMTP_USER = os.environ.get('SMTP_USER')
+    if not SMTP_USER:
+        raise ValueError("No SMTP_USER provided in environment variables.")
+
+    SMTP_PASS = os.environ.get('SMTP_PASS')
+    if not SMTP_PASS:
+        raise ValueError("No SMTP_PASS provided in environment variables.")
+
+    EMAIL_SENDER = os.environ.get('EMAIL_SENDER')
+    if not EMAIL_SENDER:
+        raise ValueError("No EMAIL_SENDER provided in environment variables.")
