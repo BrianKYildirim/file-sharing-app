@@ -25,28 +25,42 @@ def success_response(message, code=200, **kwargs):
 @api_bp.route('/register', methods=['POST'])
 def register():
     try:
-        data = request.get_json(silent=True)
-        if not data:
-            return error_response('Invalid JSON input', 400)
-        username = data.get('username')
-        email = data.get('email')
-        password = data.get('password')
-        if not username or not email or not password:
-            return error_response('Missing required data', 400)
+        data = request.get_json(silent=True) or {}
+        vid = data.get('verification_id')
+        input_code = data.get('code')
 
-        if User.query.filter((User.username == username) | (User.email == email)).first():
-            return error_response('User already exists', 409)
+        ev = EmailVerification.query.get(vid)
 
-        user = User(username=username, email=email)
-        user.set_password(password)
+        if not ev:
+
+            return error_response('Invalid verification session', 400)
+            now = datetime.now(timezone.utc)
+
+        if now > ev.expires_at:
+            return error_response('Verification code expired', 400)
+
+
+        if ev.attempts >= 5:
+            return error_response('Too many attempts', 429)
+
+        ev.attempts += 1
+
+        if ev.code != input_code:
+            db.session.commit()
+            return error_response('Incorrect code', 401)
+
+        user = User(username=ev.username, email=ev.email)
+        user.password_hash = ev.password_hash
         db.session.add(user)
-        db.session.commit()
-        return success_response('User registered', 201)
 
-    except Exception as e:
-        current_app.logger.error("Registration error: %s", str(e), exc_info=True)
-        print("DEBUG TRACEBACK:\n", traceback.format_exc())
-        return error_response("Internal server error", 500)
+        db.session.delete(ev)
+        db.session.commit()
+
+        return success_response('Registration complete', 201)
+
+    except Exception as ex:
+        current_app.logger.error("Error in register-verify:\n%s", traceback.format_exc())
+        return jsonify({'msg': f"Internal error: {str(ex)}"}), 500
 
 
 @api_bp.route('/register-initiate', methods=['POST'])
