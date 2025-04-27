@@ -60,7 +60,7 @@ def register_initiate():
             return error_response('Missing username, email or password', 400)
 
         # Prevent duplicates
-        if User.query.filter_by(email=email).first() or EmailVerification.query.filter_by(email=email).first():
+        if User.query.filter_by(email=email).first():
             return error_response('Email already in use', 409)
 
         # Create a verification record
