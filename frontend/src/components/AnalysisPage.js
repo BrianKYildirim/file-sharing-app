@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.js
+// frontend/src/components/AnalysisPage.js
 
 import React, {useState, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
@@ -9,7 +9,7 @@ import UsersModal from './UsersModal';
 import {API_BASE_URL} from '../config';
 import '../App.css';
 
-function Dashboard() {
+function AnalysisPage() {
     const navigate = useNavigate();
     const token = localStorage.getItem('access_token');
 
@@ -408,4 +408,4 @@ function Dashboard() {
     );
 }
 
-export default Dashboard;
+export default AnalysisPage;
