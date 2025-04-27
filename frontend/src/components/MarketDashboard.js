@@ -6,6 +6,8 @@ import '../App.css';
 import {API_BASE_URL} from "../config";
 
 export default function MarketDashboard() {
+    return <div>Works!</div>
+    /*
     const navigate = useNavigate();
     const [symbols] = useState(['AAPL', 'SPY', 'GOOG']);
     const [selected, setSelected] = useState(symbols[0]);
@@ -92,4 +94,6 @@ export default function MarketDashboard() {
             </div>
         </div>
     );
+
+     */
 }

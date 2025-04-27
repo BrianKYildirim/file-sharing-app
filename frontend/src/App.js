@@ -1,5 +1,5 @@
 import React from 'react';
-import {BrowserRouter as Router, Route, Routes} from 'react-router-dom';
+import {BrowserRouter, Route, Routes} from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -9,7 +9,7 @@ import MarketDashboard from './components/MarketDashboard';
 
 function App() {
     return (
-        <Router>
+        <BrowserRouter>
             <Routes>
                 <Route path="/" element={<LandingPage/>}/>
                 <Route path="/login" element={<Login/>}/>
@@ -18,7 +18,7 @@ function App() {
                 <Route path="/dashboard" element={<MarketDashboard/>}/>
                 <Route path="/analysis" element={<AnalysisPage/>}/>
             </Routes>
-        </Router>
+        </BrowserRouter>
     );
 }
 
