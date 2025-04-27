@@ -9,6 +9,7 @@ from datetime import timezone, timedelta, datetime
 import traceback
 from werkzeug.security import generate_password_hash
 import databento
+import requests
 
 api_bp = Blueprint('api_bp', __name__)
 
@@ -162,6 +163,7 @@ def get_user():
 @api_bp.route('/market/<string:symbol>', methods=['GET'])
 @jwt_required()
 def get_market_data(symbol):
+    """
     interval = request.args.get('interval', '1m')
     start = request.args.get('start')
     end = request.args.get('end')
@@ -200,6 +202,17 @@ def get_market_data(symbol):
     except Exception as e:
         current_app.logger.error(f"Databento error: {e}", exc_info=True)
         return jsonify({'msg': 'Error fetching market data'}), 500
+    """
+    interval = request.args.get('interval', '1m')
+    start = request.args.get('start')
+    end = request.args.get('end')
+
+    # Initialize Databento client
+    url = current_app.config['STOCK_URL']
+    r = requests.get(url)
+    data = r.json()
+
+    return data
 
 
 @api_bp.route('/upload', methods=['POST'])
