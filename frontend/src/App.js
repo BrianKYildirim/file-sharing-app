@@ -6,6 +6,7 @@ import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
+import VerifyAccount from './components/VerifyAccount';
 
 function App() {
     return (
