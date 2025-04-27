@@ -13,20 +13,34 @@ function Signup() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
         try {
             const res = await fetch(`${API_BASE_URL}/register-initiate`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username, email, password}),
             });
-            const data = await res.json();
 
             if (res.ok) {
+                // 2xx → definitely JSON
+                const data = await res.json();
                 navigate('/verify', {state: {verification_id: data.verification_id}});
-            } else {
-                setError(data.msg || 'Registration failed');
+                return;
             }
+
+            // Non-2xx: could be JSON or HTML
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const errData = await res.json();
+                setError(errData.msg || JSON.stringify(errData));
+            } else {
+                // Fallback to text (likely HTML error page or plain string)
+                const text = await res.text();
+                setError(text);
+            }
+
         } catch (err) {
+            // Network error or JS exception
             setError(err.message);
         }
     };
