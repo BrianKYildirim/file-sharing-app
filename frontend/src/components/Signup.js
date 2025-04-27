@@ -22,28 +22,29 @@ function Signup() {
             });
 
             if (res.ok) {
-                // 2xx → definitely JSON
+                // Success → definitely JSON
                 const data = await res.json();
                 navigate('/verify', {state: {verification_id: data.verification_id}});
                 return;
             }
 
-            // Non-2xx: could be JSON or HTML
+            // Non-2xx: inspect content-type
             const contentType = res.headers.get('content-type') || '';
+            let errMsg;
             if (contentType.includes('application/json')) {
                 const errData = await res.json();
-                setError(errData.msg || JSON.stringify(errData));
+                errMsg = errData.msg || JSON.stringify(errData);
             } else {
-                // Fallback to text (likely HTML error page or plain string)
-                const text = await res.text();
-                setError(text);
+                // could be HTML or plain text
+                errMsg = await res.text();
             }
+            setError(errMsg.trim());
 
         } catch (err) {
-            // Network error or JS exception
+            // network or parse error
             setError(err.message);
         }
-    };
+    }
 
     return (
         <div className="form-card">
