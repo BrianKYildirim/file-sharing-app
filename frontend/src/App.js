@@ -1,45 +1,25 @@
-// src/App.js
-import React, {useState, useEffect} from 'react';
+import React from 'react';
+import {BrowserRouter as Router, Route, Routes} from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Signup from './components/Signup';
+import AnalysisPage from './components/AnalysisPage';
 import VerifyAccount from './components/VerifyAccount';
 import MarketDashboard from './components/MarketDashboard';
-import AnalysisPage from './components/AnalysisPage';
 
-export default function App() {
-    // current hash (e.g. "#/login"), default to "/"
-    const [path, setPath] = useState(
-        window.location.hash.slice(1) || '/'
+function App() {
+    return (
+        <Router>
+            <Routes>
+                <Route path="/" element={<LandingPage/>}/>
+                <Route path="/login" element={<Login/>}/>
+                <Route path="/signup" element={<Signup/>}/>
+                <Route path="/verify" element={<VerifyAccount/>}/>
+                <Route path="/dashboard" element={<MarketDashboard/>}/>
+                <Route path="/analysis" element={<AnalysisPage/>}/>
+            </Routes>
+        </Router>
     );
-
-    useEffect(() => {
-        const onHash = () =>
-            setPath(window.location.hash.slice(1) || '/');
-        window.addEventListener('hashchange', onHash);
-        return () => window.removeEventListener('hashchange', onHash);
-    }, []);
-
-    let PageComponent;
-    switch (path) {
-        case '/login':
-            PageComponent = Login;
-            break;
-        case '/signup':
-            PageComponent = Signup;
-            break;
-        case '/verify':
-            PageComponent = VerifyAccount;
-            break;
-        case '/dashboard':
-            PageComponent = MarketDashboard;
-            break;
-        case '/analysis':
-            PageComponent = AnalysisPage;
-            break;
-        default:
-            PageComponent = LandingPage;
-    }
-
-    return <PageComponent/>;
 }
+
+ export default App;
