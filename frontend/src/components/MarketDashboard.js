@@ -1,8 +1,8 @@
 // frontend/src/components/MarketDashboard.js
 import React, {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
+import {Line} from 'react-chartjs-2';
 import '../App.css';
-// import {ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip} from 'recharts';
 import {API_BASE_URL} from "../config";
 
 export default function MarketDashboard() {
@@ -67,19 +67,22 @@ export default function MarketDashboard() {
 
             <div className="file-section">
                 <h3>{selected} Intraday Price</h3>
-                <div
-                    style={{
-                        height: 300,
-                        border: '2px dashed #bbb',
-                        borderRadius: 4,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#999'
+                <Line
+                    data={{
+                        labels: chartData.map(d => d.time),
+                        datasets: [{
+                            data: chartData.map(d => d.close),
+                            borderColor: '#0077cc',
+                            fill: false,
+                        }],
                     }}
-                >
-                    Chart placeholder
-                </div>
+                    options={{
+                        scales: {
+                            x: {title: {display: true, text: 'Time'}},
+                            y: {title: {display: true, text: 'Price'}},
+                        },
+                    }}
+                />
             </div>
 
             <div style={{marginTop: '30px'}}>
