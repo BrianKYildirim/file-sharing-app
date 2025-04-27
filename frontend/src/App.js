@@ -1,25 +1,36 @@
-import React from 'react';
-import {BrowserRouter, Route, Routes} from 'react-router-dom';
-import LandingPage from './components/LandingPage';
-import Login from './components/Login';
-import Signup from './components/Signup';
-import AnalysisPage from './components/AnalysisPage';
-import VerifyAccount from './components/VerifyAccount';
+// src/App.js
+import React, { useState, useEffect } from 'react';
+import LandingPage     from './components/LandingPage';
+import Login           from './components/Login';
+import Signup          from './components/Signup';
+import VerifyAccount   from './components/VerifyAccount';
 import MarketDashboard from './components/MarketDashboard';
+import AnalysisPage    from './components/AnalysisPage';
 
-function App() {
-    return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<LandingPage/>}/>
-                <Route path="/login" element={<Login/>}/>
-                <Route path="/signup" element={<Signup/>}/>
-                <Route path="/verify" element={<VerifyAccount/>}/>
-                <Route path="/dashboard" element={<MarketDashboard/>}/>
-                <Route path="/analysis" element={<AnalysisPage/>}/>
-            </Routes>
-        </BrowserRouter>
-    );
+export default function App() {
+  // current path is everything after the '#'
+  const [path, setPath] = useState(
+    window.location.hash.slice(1) || '/'
+  );
+
+  useEffect(() => {
+    const onHashChange = () =>
+      setPath(window.location.hash.slice(1) || '/');
+    window.addEventListener('hashchange', onHashChange);
+    return () =>
+      window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // map path → component
+  let Page;
+  switch (path) {
+    case '/login':      Page = Login;           break;
+    case '/signup':     Page = Signup;          break;
+    case '/verify':     Page = VerifyAccount;   break;
+    case '/dashboard':  Page = MarketDashboard; break;
+    case '/analysis':   Page = AnalysisPage;    break;
+    default:            Page = LandingPage;
+  }
+
+  return <Page />;
 }
-
- export default App;

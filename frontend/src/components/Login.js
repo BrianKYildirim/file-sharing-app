@@ -1,7 +1,7 @@
 // frontend/src/components/Login.js
 
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+//import { useNavigate, Link } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 import '../App.css';
 
@@ -9,7 +9,7 @@ function Login() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
 
 
   const handleSubmit = async (e) => {
@@ -24,7 +24,7 @@ function Login() {
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('access_token', data.access_token);
-        navigate('/dashboard');
+        window.location.hash = '/dashboard';
       } else {
         setError(data.msg);
       }
@@ -58,7 +58,7 @@ function Login() {
         </div>
         <button type="submit">Log In</button>
       </form>
-      <p>Don't have an account? <Link to="/signup">Sign Up</Link></p>
+      <p>Don't have an account? <a href="/signup">Sign Up</a></p>
     </div>
   );
 }

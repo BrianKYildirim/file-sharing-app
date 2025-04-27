@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {useNavigate, Link} from 'react-router-dom';
+//import {useNavigate, Link} from 'react-router-dom';
 import {API_BASE_URL} from '../config';
 import '../App.css';
 
@@ -8,7 +8,7 @@ function Signup() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const navigate = useNavigate();
+    //const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -24,7 +24,7 @@ function Signup() {
             if (res.ok) {
                 // Success → definitely JSON
                 const data = await res.json();
-                navigate('/verify', {state: {verification_id: data.verification_id}});
+                window.location.hash = ('/verify', {state: {verification_id: data.verification_id}});
                 return;
             }
 
@@ -80,7 +80,7 @@ function Signup() {
                 </div>
                 <button type="submit">Sign Up</button>
             </form>
-            <p>Already have an account? <Link to="/login">Log In</Link></p>
+            <p>Already have an account? <a href="/login">Log In</a></p>
         </div>
     );
 }

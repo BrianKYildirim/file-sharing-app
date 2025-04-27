@@ -1,7 +1,7 @@
 // frontend/src/components/AnalysisPage.js
 
 import React, {useState, useEffect} from 'react';
-import {useNavigate} from 'react-router-dom';
+// import {useNavigate} from 'react-router-dom';
 import FileUpload from './FileUpload';
 import ShareModal from './ShareModal';
 import ContextMenu from './ContextMenu';
@@ -10,7 +10,6 @@ import {API_BASE_URL} from '../config';
 import '../App.css';
 
 function AnalysisPage() {
-    const navigate = useNavigate();
     const token = localStorage.getItem('access_token');
 
     const [files, setFiles] = useState({owned_files: [], shared_files: []});
@@ -68,7 +67,7 @@ function AnalysisPage() {
                     You must be logged in to view the dashboard.
                 </p>
                 <button
-                    onClick={() => navigate('/login')}
+                    onClick={() => window.location.hash=('/login')}
                     style={{
                         padding: '10px 20px',
                         backgroundColor: '#0077cc',
@@ -90,7 +89,7 @@ function AnalysisPage() {
 
     const handleLogout = () => {
         localStorage.removeItem('access_token');
-        navigate('/');
+        window.location.hash = ('/');
     };
 
     const handleFileRightClick = (file, event, isOwner) => {

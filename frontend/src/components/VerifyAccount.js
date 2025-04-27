@@ -1,11 +1,11 @@
 import React, {useState} from 'react';
-import {useNavigate, useLocation} from 'react-router-dom';
+//import {useNavigate, useLocation} from 'react-router-dom';
 import {API_BASE_URL} from '../config';
 import '../App.css';
 
 export default function VerifyAccount() {
-    const navigate = useNavigate();
-    const {state} = useLocation();             // expecting { verification_id }
+    //const navigate = useNavigate();
+    //const {state} = useLocation();             // expecting { verification_id }
     const verificationId = state?.verification_id;
 
     const [code, setCode] = useState('');
@@ -43,7 +43,7 @@ export default function VerifyAccount() {
 
             if (res.ok) {
                 alert('Your account is now verified. Please log in.');
-                navigate('/login');
+                window.location.hash=('/login');
             } else {
                 throw new Error(data.msg || 'Verification failed');
             }
