@@ -2,15 +2,7 @@
 import React, {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import '../App.css';
-import {
-    ResponsiveContainer,
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip
-} from 'recharts';
+// import {ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip} from 'recharts';
 import {API_BASE_URL} from "../config";
 
 export default function MarketDashboard() {
@@ -32,7 +24,7 @@ export default function MarketDashboard() {
         try {
             const res = await fetch(
                 `${API_BASE_URL}/market/${sym}`,
-                { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }
+                {headers: {Authorization: `Bearer ${localStorage.getItem('access_token')}`}}
             );
             const data = await res.json();
             if (res.ok) setChartData(data);
@@ -75,21 +67,19 @@ export default function MarketDashboard() {
 
             <div className="file-section">
                 <h3>{selected} Intraday Price</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3"/>
-                        <XAxis dataKey="time"/>
-                        <YAxis domain={['auto', 'auto']}/>
-                        <Tooltip/>
-                        <Line
-                            type="monotone"
-                            dataKey="close"
-                            dot={false}
-                            stroke="#0077cc"
-                            strokeWidth={2}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
+                <div
+                    style={{
+                        height: 300,
+                        border: '2px dashed #bbb',
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#999'
+                    }}
+                >
+                    Chart placeholder
+                </div>
             </div>
 
             <div style={{marginTop: '30px'}}>
