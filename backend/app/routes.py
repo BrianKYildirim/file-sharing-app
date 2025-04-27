@@ -168,6 +168,16 @@ def get_market_data(symbol):
     start = request.args.get('start')
     end = request.args.get('end')
 
+    url = current_app.config['STOCK_URL']
+    r = requests.get(url)
+    data = r.json()
+
+    return data
+    """
+    interval = request.args.get('interval', '1m')
+    start = request.args.get('start')
+    end = request.args.get('end')
+
     # Initialize Databento client
     api_key = current_app.config['DATABENTO_API_KEY']
     dataset = current_app.config['DATABENTO_DATASET']
@@ -202,17 +212,6 @@ def get_market_data(symbol):
     except Exception as e:
         current_app.logger.error(f"Databento error: {e}", exc_info=True)
         return jsonify({'msg': 'Error fetching market data'}), 500
-    """
-    interval = request.args.get('interval', '1m')
-    start = request.args.get('start')
-    end = request.args.get('end')
-
-    # Initialize Databento client
-    url = current_app.config['STOCK_URL']
-    r = requests.get(url)
-    data = r.json()
-
-    return data
 
 
 @api_bp.route('/upload', methods=['POST'])
