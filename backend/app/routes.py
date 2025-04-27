@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from .models import User, File, SharedFile, EmailVerification
 from . import db
-from .services import upload_file_to_s3, generate_presigned_url, generate_code,send_verification_email
+from .services import upload_file_to_s3, generate_presigned_url, generate_code, send_verification_email
 import uuid
 from datetime import timezone, timedelta, datetime
 import traceback
@@ -20,47 +20,6 @@ def success_response(message, code=200, **kwargs):
     resp = {'msg': message}
     resp.update(kwargs)
     return jsonify(resp), code
-
-
-@api_bp.route('/register', methods=['POST'])
-def register():
-    try:
-        data = request.get_json(silent=True) or {}
-        vid = data.get('verification_id')
-        input_code = data.get('code')
-
-        ev = EmailVerification.query.get(vid)
-
-        if not ev:
-
-            return error_response('Invalid verification session', 400)
-            now = datetime.now(timezone.utc)
-
-        if now > ev.expires_at:
-            return error_response('Verification code expired', 400)
-
-
-        if ev.attempts >= 5:
-            return error_response('Too many attempts', 429)
-
-        ev.attempts += 1
-
-        if ev.code != input_code:
-            db.session.commit()
-            return error_response('Incorrect code', 401)
-
-        user = User(username=ev.username, email=ev.email)
-        user.password_hash = ev.password_hash
-        db.session.add(user)
-
-        db.session.delete(ev)
-        db.session.commit()
-
-        return success_response('Registration complete', 201)
-
-    except Exception as ex:
-        current_app.logger.error("Error in register-verify:\n%s", traceback.format_exc())
-        return jsonify({'msg': f"Internal error: {str(ex)}"}), 500
 
 
 @api_bp.route('/register-initiate', methods=['POST'])
@@ -103,27 +62,44 @@ def register_initiate():
 
 @api_bp.route('/register-verify', methods=['POST'])
 def register_verify():
-    data = request.get_json(silent=True) or {}
-    vid, input_code = data.get('verification_id'), data.get('code')
-    ev = EmailVerification.query.get(vid) or None
-    if not ev:
-        return error_response('Invalid verification session', 400)
-    if datetime.now(timezone.utc) > ev.expires_at:
-        return error_response('Verification code expired', 400)
-    if ev.attempts >= 5:
-        return error_response('Too many attempts', 429)
-    ev.attempts += 1
-    if ev.code != input_code:
+    try:
+        data = request.get_json(silent=True) or {}
+        vid = data.get('verification_id')
+        input_code = data.get('code')
+
+        ev = EmailVerification.query.get(vid)
+        if not ev:
+            return error_response('Invalid verification session', 400)
+
+        now = datetime.now(timezone.utc)
+        if now > ev.expires_at:
+            return error_response('Verification code expired', 400)
+
+        if ev.attempts >= 5:
+            return error_response('Too many attempts', 429)
+
+        ev.attempts += 1
+        if ev.code != input_code:
+            db.session.commit()
+            return error_response('Incorrect code', 401)
+
+        # Everything’s valid – create the real user
+        user = User(username=ev.username, email=ev.email)
+        user.password_hash = ev.password_hash
+        db.session.add(user)
+
+        # Clean up the verification record
+        db.session.delete(ev)
         db.session.commit()
-        return error_response('Incorrect code', 401)
-    # Create real user
-    user = User(username=ev.username, email=ev.email)
-    user.password_hash = ev.password_hash
-    db.session.add(user)
-    # Cleanup
-    db.session.delete(ev)
-    db.session.commit()
-    return success_response('Registration complete', 201)
+
+        return success_response('Registration complete', 201)
+
+    except Exception as ex:
+        # Log the full traceback in your Gunicorn logs
+        current_app.logger.error("Error in register-verify:\n%s", traceback.format_exc())
+        # Return JSON with the exception text so your React UI can display it
+        return jsonify({'msg': f"Internal error: {str(ex)}"}), 500
+
 
 @api_bp.route('/register-resend', methods=['POST'])
 def register_resend():
