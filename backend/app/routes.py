@@ -8,7 +8,7 @@ import uuid
 from datetime import timezone, timedelta, datetime
 import traceback
 from werkzeug.security import generate_password_hash
-import databento
+# import databento
 import requests
 
 api_bp = Blueprint('api_bp', __name__)
@@ -168,16 +168,6 @@ def get_market_data(symbol):
     start = request.args.get('start')
     end = request.args.get('end')
 
-    url = current_app.config['STOCK_URL']
-    r = requests.get(url)
-    data = r.json()
-
-    return data
-    """
-    interval = request.args.get('interval', '1m')
-    start = request.args.get('start')
-    end = request.args.get('end')
-
     # Initialize Databento client
     api_key = current_app.config['DATABENTO_API_KEY']
     dataset = current_app.config['DATABENTO_DATASET']
@@ -212,6 +202,42 @@ def get_market_data(symbol):
     except Exception as e:
         current_app.logger.error(f"Databento error: {e}", exc_info=True)
         return jsonify({'msg': 'Error fetching market data'}), 500
+    """
+    api_key = current_app.config['ALPHAVANTAGE_API_KEY']
+    interval = request.args.get('interval', '1min')  # AV uses "1min","5min", etc.
+
+    url = (
+        "https://www.alphavantage.co/query"
+        "?function=TIME_SERIES_INTRADAY"
+        f"&symbol={symbol}"
+        f"&interval={interval}"
+        "&outputsize=compact"
+        f"&apikey={api_key}"
+    )
+
+    resp = requests.get(url, timeout=10)
+    if not resp.ok:
+        return error_response('Alpha Vantage error', 502)
+
+    data = resp.json()
+    ts_key = f"Time Series ({interval})"
+    if ts_key not in data:
+        return error_response(data.get("Note") or data.get("Error Message") or "Unexpected API response", 500)
+
+    series = data[ts_key]
+    # Build a list sorted ascending by timestamp
+    result = []
+    for ts, bar in sorted(series.items()):
+        result.append({
+            "time": ts,  # e.g. "2025-04-27 14:30:00"
+            "open": float(bar["1. open"]),
+            "high": float(bar["2. high"]),
+            "low": float(bar["3. low"]),
+            "close": float(bar["4. close"]),
+            "volume": int(bar["5. volume"])
+        })
+
+    return jsonify(result), 200
 
 
 @api_bp.route('/upload', methods=['POST'])

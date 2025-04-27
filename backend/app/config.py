@@ -42,8 +42,10 @@ class Config:
     if not EMAIL_SENDER:
         raise ValueError("No EMAIL_SENDER provided in environment variables.")
 
+    """
     DATABENTO_API_KEY = os.environ.get('DATABENTO_API_KEY')
     if not DATABENTO_API_KEY:
         raise ValueError("No DATABENTO_API_KEY in environment variables.")
 
     DATABENTO_DATASET = os.environ.get('DATABENTO_DATASET', 'XNAS.OHLCV')
+    """
