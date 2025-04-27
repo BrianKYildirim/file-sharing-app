@@ -51,31 +51,41 @@ def register():
 
 @api_bp.route('/register-initiate', methods=['POST'])
 def register_initiate():
-    data = request.get_json(silent=True) or {}
-    u, e, pw = data.get('username'), data.get('email'), data.get('password')
-    if not u or not e or not pw:
-        return error_response('Missing fields', 400)
-    if User.query.filter_by(email=e).first():
-        return error_response('Email already in use', 409)
-    # Create verification record
-    code = generate_code()
-    expires = datetime.now(timezone.utc) + timedelta(minutes=10)
-    ev = EmailVerification(
-        username=u,
-        email=e,
-        password_hash=generate_password_hash(pw),
-        code=code,
-        expires_at=expires
-    )
-    db.session.add(ev)
-    db.session.commit()
-    
     try:
-        send_verification_email(e, code)
+        data = request.get_json(silent=True) or {}
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        if not username or not email or not password:
+            return error_response('Missing username, email or password', 400)
+
+        # Prevent duplicates
+        if User.query.filter_by(email=email).first() or EmailVerification.query.filter_by(email=email).first():
+            return error_response('Email already in use', 409)
+
+        # Create a verification record
+        code = generate_code()
+        expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+        ev = EmailVerification(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password),
+            code=code,
+            expires_at=expires
+        )
+        db.session.add(ev)
+        db.session.commit()
+
+        # Send the email
+        send_verification_email(email, code)
+
+        return success_response('Verification code sent', 200, verification_id=ev.id)
+
     except Exception as ex:
-        current_app.logger.error("Email send failed", exc_info=True)
-        return error_response('Failed to send verification email', 500)
-    return success_response('Verification code sent', 200, verification_id=ev.id)
+        current_app.logger.error("Error in register-initiate", exc_info=True)
+        # Return the exception text so the frontend can display it
+        return jsonify({'msg': f"Internal error: {str(ex)}"}), 500
+
 
 @api_bp.route('/register-verify', methods=['POST'])
 def register_verify():
