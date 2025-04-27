@@ -1,10 +1,7 @@
 // frontend/src/App.js
 
-/*
-
 import React from 'react';
 import {Route, Routes} from 'react-router-dom';
-//import {BrowserRouter as Router, Route, Routes} from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -25,8 +22,4 @@ function App() {
     );
 }
 
-*/
-
-export default function App() {
-    return <div>Build works!</div>
-}
+export default App;
