@@ -8,6 +8,7 @@ import uuid
 from datetime import timezone, timedelta, datetime
 import traceback
 from werkzeug.security import generate_password_hash
+import databento
 
 api_bp = Blueprint('api_bp', __name__)
 
@@ -156,6 +157,49 @@ def get_user():
         return error_response('Invalid token identity', 400)
     user = User.query.get_or_404(user_id)
     return jsonify({'username': user.username, 'email': user.email}), 200
+
+
+@api_bp.route('/market/<string:symbol>', methods=['GET'])
+@jwt_required()
+def get_market_data(symbol):
+    interval = request.args.get('interval', '1m')
+    start = request.args.get('start')
+    end = request.args.get('end')
+
+    # Initialize Databento client
+    api_key = current_app.config['DATABENTO_API_KEY']
+    dataset = current_app.config['DATABENTO_DATASET']
+    client = databento.Historical(api_key)
+
+    params = {
+        'dataset': dataset,
+        'symbols': symbol,
+        'schema': 'ohlcv',
+        'interval': interval,
+    }
+    if start: params['start'] = start
+    if end: params['end'] = end
+
+    try:
+        bars = client.timeseries.get_range(**params)
+        result = []
+
+        def collect(bar):
+            result.append({
+                'time': bar.start.isoformat(),
+                'open': bar.open,
+                'high': bar.high,
+                'low': bar.low,
+                'close': bar.close,
+                'volume': bar.volume,
+            })
+
+        bars.replay(callback=collect)
+        return jsonify(result), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Databento error: {e}", exc_info=True)
+        return jsonify({'msg': 'Error fetching market data'}), 500
 
 
 @api_bp.route('/upload', methods=['POST'])
