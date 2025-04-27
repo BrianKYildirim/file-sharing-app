@@ -72,7 +72,11 @@ def register_verify():
             return error_response('Invalid verification session', 400)
 
         now = datetime.now(timezone.utc)
-        if now > ev.expires_at:
+        exp = ev.expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+
+        if now > exp:
             return error_response('Verification code expired', 400)
 
         if ev.attempts >= 5:
@@ -109,8 +113,11 @@ def register_resend():
     if not ev:
         return error_response('Invalid session', 400)
     now = datetime.now(timezone.utc)
-    if (now - ev.last_sent) < timedelta(seconds=60):
-        return error_response('Please wait before resending', 429)
+    last = ev.last_sent
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    if (now - last) < timedelta(seconds=60):
+        return error_response('Please wait at least 60 seconds before resending', 429)
     # Generate & send new code
     ev.code = generate_code()
     ev.expires_at = now + timedelta(minutes=10)
