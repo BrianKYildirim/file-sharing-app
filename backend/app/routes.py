@@ -56,7 +56,7 @@ def register_initiate():
     if not u or not e or not pw:
         return error_response('Missing fields', 400)
     # Prevent duplicate verifications or real users
-    if User.query.filter_by(email=e).first() or EmailVerification.query.filter_by(email=e).first():
+    if User.query.filter_by(email=e).first():
         return error_response('Email already in use', 409)
     # Create verification record
     code = generate_code()

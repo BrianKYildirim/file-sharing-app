@@ -1,6 +1,9 @@
-from flask import Flask
+from app import create_app
 
-app = Flask(__name__)
+from dotenv import load_dotenv
+load_dotenv()
+
+app = create_app()
 
 
 @app.route('/')
