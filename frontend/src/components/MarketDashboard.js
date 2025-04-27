@@ -31,7 +31,7 @@ export default function MarketDashboard() {
         setSelected(sym);
         try {
             const res = await fetch(
-                `${API_BASE_URL}/market/${sym}?interval=1m`,
+                `${API_BASE_URL}/market/${sym}`,
                 { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }
             );
             const data = await res.json();
@@ -83,7 +83,7 @@ export default function MarketDashboard() {
                         <Tooltip/>
                         <Line
                             type="monotone"
-                            dataKey="price"
+                            dataKey="close"
                             dot={false}
                             stroke="#0077cc"
                             strokeWidth={2}

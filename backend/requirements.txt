@@ -9,3 +9,5 @@ boto3
 python-dotenv
 Flask-CORS
 gunicorn
+yfinance
+pandas

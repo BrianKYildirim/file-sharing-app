@@ -8,7 +8,8 @@ import uuid
 from datetime import timezone, timedelta, datetime
 import traceback
 from werkzeug.security import generate_password_hash
-# import databento
+import yfinance as yf
+import pandas as pd
 import requests
 
 api_bp = Blueprint('api_bp', __name__)
@@ -163,81 +164,39 @@ def get_user():
 @api_bp.route('/market/<string:symbol>', methods=['GET'])
 @jwt_required()
 def get_market_data(symbol):
-    """
+    period = request.args.get('period',   '1d')
     interval = request.args.get('interval', '1m')
-    start = request.args.get('start')
-    end = request.args.get('end')
-
-    # Initialize Databento client
-    api_key = current_app.config['DATABENTO_API_KEY']
-    dataset = current_app.config['DATABENTO_DATASET']
-    client = databento.Historical(api_key)
-
-    params = {
-        'dataset': dataset,
-        'symbols': symbol,
-        'schema': 'ohlcv',
-        'interval': interval,
-    }
-    if start: params['start'] = start
-    if end: params['end'] = end
 
     try:
-        bars = client.timeseries.get_range(**params)
-        result = []
+        # Download returns a DataFrame indexed by Timestamp
+        df: pd.DataFrame = yf.download(
+            tickers=symbol,
+            period=period,
+            interval=interval,
+            progress=False,
+            threads=False,
+        )
+        # If empty, symbol might be invalid
+        if df.empty:
+            return error_response(f"No data for {symbol}", 404)
 
-        def collect(bar):
+        # Build JSON result
+        result = []
+        for ts, row in df.iterrows():
             result.append({
-                'time': bar.start.isoformat(),
-                'open': bar.open,
-                'high': bar.high,
-                'low': bar.low,
-                'close': bar.close,
-                'volume': bar.volume,
+                "time": ts.tz_localize('UTC').isoformat(),  # uniform UTC ISO
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+                "volume": int(row["Volume"]),
             })
 
-        bars.replay(callback=collect)
         return jsonify(result), 200
 
     except Exception as e:
-        current_app.logger.error(f"Databento error: {e}", exc_info=True)
-        return jsonify({'msg': 'Error fetching market data'}), 500
-    """
-    api_key = current_app.config['ALPHAVANTAGE_API_KEY']
-    interval = request.args.get('interval', '1min')  # AV uses "1min","5min", etc.
-
-    url = (
-        "https://www.alphavantage.co/query"
-        "?function=TIME_SERIES_INTRADAY"
-        f"&symbol={symbol}"
-        f"&interval={interval}"
-        "&outputsize=compact"
-        f"&apikey={api_key}"
-    )
-
-    resp = requests.get(url, timeout=10)
-    if not resp.ok:
-        return error_response('Alpha Vantage error', 502)
-
-    data = resp.json()
-    ts_key = f"Time Series ({interval})"
-    if ts_key not in data:
-        return error_response(data.get("Note") or data.get("Error Message") or "Unexpected API response", 500)
-
-    series = data[ts_key]
-    # Build a list sorted ascending by timestamp
-    result = []
-    for ts, bar in sorted(series.items()):
-        result.append({
-            "time": ts,  # e.g. "2025-04-27 14:30:00"
-            "open": float(bar["1. open"]),
-            "high": float(bar["2. high"]),
-            "low": float(bar["3. low"]),
-            "close": float(bar["4. close"]),
-            "volume": int(bar["5. volume"])
-        })
-
-    return jsonify(result), 200
+        current_app.logger.error(f"yfinance error: {e}", exc_info=True)
+        return error_response("Error fetching market data", 500)
 
 
 @api_bp.route('/upload', methods=['POST'])
