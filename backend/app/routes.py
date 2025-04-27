@@ -55,7 +55,6 @@ def register_initiate():
     u, e, pw = data.get('username'), data.get('email'), data.get('password')
     if not u or not e or not pw:
         return error_response('Missing fields', 400)
-    # Prevent duplicate verifications or real users
     if User.query.filter_by(email=e).first():
         return error_response('Email already in use', 409)
     # Create verification record
