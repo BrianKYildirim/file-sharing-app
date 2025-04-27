@@ -1,9 +1,10 @@
 // frontend/src/components/MarketDashboard.js
-import React, {useState} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {Line} from 'react-chartjs-2';
+//import React, {useState} from 'react';
+import React from 'react';
+//import {useNavigate} from 'react-router-dom';
+//import {Line} from 'react-chartjs-2';
 import '../App.css';
-import {API_BASE_URL} from "../config";
+//import {API_BASE_URL} from "../config";
 
 export default function MarketDashboard() {
     return <div>Works!</div>
