@@ -48,7 +48,7 @@ export default function MarketDashboard() {
             .then(r => r.json().then(data => ({ok: r.ok, data})))
             .then(({ok, data}) => {
                 setLoading(false);
-                if (!ok) throw new Error(data.msg || 'Fetch error');
+                if (!ok) throw new Error(data.msg || 'Error fetching market data');
 
                 // remove old series
                 if (seriesRef.current) chartRef.current.removeSeries(seriesRef.current);
@@ -77,6 +77,7 @@ export default function MarketDashboard() {
                 setLoading(false);
                 console.error(err);
                 alert('Error fetching market data');
+                alert(err.message);
             });
     }, [symbol, interval, type]);
 
