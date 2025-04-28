@@ -41,3 +41,7 @@ class Config:
     EMAIL_SENDER = os.environ.get('EMAIL_SENDER')
     if not EMAIL_SENDER:
         raise ValueError("No EMAIL_SENDER provided in environment variables.")
+
+    ALPHAVANTAGE_API_KEY = os.environ.get('ALPHAVANTAGE_API_KEY')
+    if not ALPHAVANTAGE_API_KEY:
+        raise ValueError("No ALPHAVANTAGE_API_KEY2 provided in environment variables.")

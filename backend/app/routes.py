@@ -164,38 +164,42 @@ def get_user():
 @api_bp.route('/market/<string:symbol>', methods=['GET'])
 @jwt_required()
 def get_market_data(symbol):
-    period = request.args.get('period',   '1d')
-    interval = request.args.get('interval', '1m')
+    api_key = current_app.config['ALPHAVANTAGE_API_KEY']
+    url = 'https://www.alphavantage.co/query'
+    params = {
+        'function': 'TIME_SERIES_INTRADAY',
+        'symbol': symbol,
+        'interval': '1min',
+        'outputsize': 'compact',
+        'apikey': api_key,
+        }
 
     try:
-        # Download returns a DataFrame indexed by Timestamp
-        df: pd.DataFrame = yf.download(
-            tickers=symbol,
-            period=period,
-            interval=interval,
-            progress=False,
-            threads=False,
-        )
-        # If empty, symbol might be invalid
-        if df.empty:
-            return error_response(f"No data for {symbol}", 404)
+        resp = requests.get(url, params=params, timeout=10)
+        data = resp.json()
 
-        # Build JSON result
+        if 'Time Series (1min)' not in data:
+            msg = data.get('Note') or data.get('Error Message') or 'No intraday data found'
+            return error_response(msg, 404)
+
+        ts_data = data['Time Series (1min)']
+        sorted_items = sorted(ts_data.items(), key=lambda x: x[0])
+
         result = []
-        for ts, row in df.iterrows():
+        for timestamp, vals in sorted_items:
             result.append({
-                "time": ts.tz_localize('UTC').isoformat(),  # uniform UTC ISO
-                "open": float(row["Open"]),
-                "high": float(row["High"]),
-                "low": float(row["Low"]),
-                "close": float(row["Close"]),
-                "volume": int(row["Volume"]),
+                'time': timestamp,
+                'open': float(vals['1. open']),
+                'high': float(vals['2. high']),
+                'low': float(vals['3. low']),
+                'close': float(vals['4. close']),
+                'volume': int(vals['5. volume']),
             })
 
         return jsonify(result), 200
 
     except Exception as e:
-        current_app.logger.error(f"yfinance error: {e}", exc_info=True)
+        current_app.logger.error(f"AlphaVantage error: {e}", exc_info=True)
         return error_response("Error fetching market data", 500)
 
 
