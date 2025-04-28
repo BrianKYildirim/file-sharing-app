@@ -225,6 +225,11 @@ export default function MarketDashboard() {
                 {/* ── Chart Header ───────────────────────────────────────── */}
                 <div className="dashboard-header">
                     <h2>Market Dashboard</h2>
+                    {username && (
+                        <p style={{marginTop: 5, fontSize: '0.95rem', color: '#555'}}>
+                            Logged in as <strong>{username}</strong>
+                        </p>
+                    )}
                     <button className="logout-button" onClick={handleLogout}>Logout</button>
                 </div>
 
@@ -258,13 +263,7 @@ export default function MarketDashboard() {
                     <div className="dashboard-header">
                         <div>
                             <h2>File Sharing & CSV Analysis</h2>
-                            {username && (
-                                <p style={{marginTop: 5, fontSize: '0.95rem', color: '#555'}}>
-                                    Logged in as <strong>{username}</strong>
-                                </p>
-                            )}
                         </div>
-                        <button className="logout-button" onClick={handleLogout}>Logout</button>
                     </div>
 
                     <div className="file-upload-section">
