@@ -3,7 +3,7 @@ import React, {useState, useEffect, useRef} from 'react';
 import '../App.css';
 
 export default function MarketDashboard() {
-    const watchlist = ['AAPL', 'SPY', 'GOOG'];
+    const watchlist = ['AAPL', 'NVDA', 'GOOG'];
 
     // our “human” ↔ TradingView codes
     const intervalMap = {
@@ -88,33 +88,6 @@ export default function MarketDashboard() {
                         {s}
                     </button>
                 ))}
-            </div>
-
-            <div style={{display: 'flex', gap: 8, marginBottom: 12}}>
-                <label>
-                    Interval:{' '}
-                    <select
-                        value={interval}
-                        onChange={(e) => setInterval(e.target.value)}
-                    >
-                        {Object.keys(intervalMap).map((k) => (
-                            <option key={k} value={k}>
-                                {k}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-
-                <label>
-                    Type:{' '}
-                    <select
-                        value={type}
-                        onChange={(e) => setType(e.target.value)}
-                    >
-                        <option value="candlestick">Candlestick</option>
-                        <option value="line">Line</option>
-                    </select>
-                </label>
             </div>
 
             <div
