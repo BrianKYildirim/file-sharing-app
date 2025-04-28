@@ -15,69 +15,110 @@ export default function MarketDashboard() {
     const [loading, setLoading] = useState(false);
     const watchlist = ['AAPL', 'SPY', 'GOOG'];
 
-    // initialize chart once
+    // 1) create the chart once
     useEffect(() => {
         const chart = createChart(chartContainer.current, {
             width: chartContainer.current.clientWidth,
             height: 400,
-            layout: {backgroundColor: '#ffffff', textColor: '#333'},
-            grid: {vertLines: {color: '#eee'}, horzLines: {color: '#eee'}},
+            layout: {
+                backgroundColor: '#ffffff',
+                textColor: '#333',
+            },
+            grid: {
+                vertLines: {color: '#eee'},
+                horzLines: {color: '#eee'},
+            },
             crosshair: {mode: CrosshairMode.Normal},
             rightPriceScale: {borderColor: '#ccc'},
-            timeScale: {borderColor: '#ccc', timeVisible: true, secondsVisible: false},
+            timeScale: {
+                borderColor: '#ccc',
+                timeVisible: true,
+                secondsVisible: false,
+            },
         });
         chartRef.current = chart;
 
-        // resize
-        const handleResize = () => chart.applyOptions({width: chartContainer.current.clientWidth});
+        // keep it responsive
+        const handleResize = () =>
+            chart.applyOptions({width: chartContainer.current.clientWidth});
         window.addEventListener('resize', handleResize);
+
         return () => {
             window.removeEventListener('resize', handleResize);
             chart.remove();
         };
     }, []);
 
-    // whenever symbol/interval/type changes, fetch & redraw
+    // 2) whenever symbol/interval/type change, re-fetch & redraw
     useEffect(() => {
         if (!chartRef.current) return;
         setLoading(true);
 
-        fetch(`${API_BASE_URL}/market/${symbol}?interval=${interval}`, {
-            headers: {Authorization: `Bearer ${localStorage.getItem('access_token')}`},
-        })
-            .then(r => r.json().then(data => ({ok: r.ok, data})))
-            .then(({ok, data}) => {
+        fetch(
+            `${API_BASE_URL}/market/${symbol}?interval=${interval}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+                },
+            }
+        )
+            .then(async (r) => {
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.msg || 'API error');
+                return data;
+            })
+            .then((data) => {
                 setLoading(false);
-                if (!ok) throw new Error(data.msg || 'Error fetching market data');
 
-                // remove old series
-                if (seriesRef.current) chartRef.current.removeSeries(seriesRef.current);
-
-                // add new series
-                if (type === 'candlestick') {
-                    const s = chartRef.current.addCandlestickSeries();
-                    s.setData(data);
-                    seriesRef.current = s;
-
-                } else {
-                    const s = chartRef.current.addLineSeries({
-                        priceLineVisible: false,
-                        lastValueVisible: true,
-                        priceScaleId: '',
-                    });
-                    // line series wants time:number|time object; we can pass ISO strings
-                    s.setData(data.map(d => ({time: d.time, value: d.close})));
-                    seriesRef.current = s;
+                // clear old series
+                if (seriesRef.current) {
+                    chartRef.current.removeSeries(seriesRef.current);
+                    seriesRef.current = null;
                 }
 
-                // fit to data
+                // re-add the right series type
+                let newSeries;
+                if (type === 'candlestick') {
+                    newSeries = chartRef.current.addCandlestickSeries({
+                        upColor: '#26a69a',
+                        downColor: '#ef5350',
+                        wickUpColor: '#26a69a',
+                        wickDownColor: '#ef5350',
+                    });
+
+                    // OHLCV expects { time: <number>, open, high, low, close }
+                    newSeries.setData(
+                        data.map((d) => ({
+                            time: Math.floor(new Date(d.time).getTime() / 1000),
+                            open: d.open,
+                            high: d.high,
+                            low: d.low,
+                            close: d.close,
+                        }))
+                    );
+                } else {
+                    newSeries = chartRef.current.addLineSeries({
+                        priceLineVisible: false,
+                        lastValueVisible: true,
+                    });
+
+                    newSeries.setData(
+                        data.map((d) => ({
+                            time: Math.floor(new Date(d.time).getTime() / 1000),
+                            value: d.close,
+                        }))
+                    );
+                }
+
+                seriesRef.current = newSeries;
                 chartRef.current.timeScale().fitContent();
             })
-            .catch(err => {
+            .catch((err) => {
                 setLoading(false);
                 console.error(err);
-                alert('Error fetching market data');
-                alert(err.message);
+                alert(err.message.startsWith('Unsupported')
+                    ? err.message
+                    : 'Error fetching market data');
             });
     }, [symbol, interval, type]);
 
@@ -96,52 +137,55 @@ export default function MarketDashboard() {
                 </button>
             </div>
 
-            <div style={{marginBottom: '12px'}}>
+            <div style={{marginBottom: 12}}>
                 <strong>Watchlist:</strong>{' '}
-                {watchlist.map(sym => (
+                {watchlist.map((sym) => (
                     <button
                         key={sym}
                         onClick={() => setSymbol(sym)}
-                        style={{
-                            marginRight: 8,
-                            fontWeight: sym === symbol ? 'bold' : 'normal',
-                        }}
+                        style={{marginRight: 8, fontWeight: sym === symbol ? 'bold' : 'normal'}}
                     >
                         {sym}
                     </button>
                 ))}
             </div>
 
-            <div style={{display: 'flex', gap: '8px', marginBottom: '12px'}}>
+            <div style={{display: 'flex', gap: 8, marginBottom: 12}}>
                 <label>
                     Interval:
-                    <select value={interval} onChange={e => setInterval(e.target.value)}>
-                        {['1min', '5min', '15min', '30min', '60min', 'daily', 'weekly', 'monthly']
-                            .map(iv => <option key={iv} value={iv}>{iv}</option>)}
+                    <select value={interval} onChange={(e) => setInterval(e.target.value)}>
+                        {['1min', '5min', '15min', '30min', '60min', 'daily', 'weekly', 'monthly'].map(
+                            (iv) => (
+                                <option key={iv} value={iv}>
+                                    {iv}
+                                </option>
+                            )
+                        )}
                     </select>
                 </label>
 
                 <label>
                     Type:
-                    <select value={type} onChange={e => setType(e.target.value)}>
+                    <select value={type} onChange={(e) => setType(e.target.value)}>
                         <option value="candlestick">Candlestick</option>
                         <option value="line">Line</option>
                     </select>
                 </label>
             </div>
 
-            {loading && <p>Loading Chart…</p>}
+            {loading && <p>Loading chart…</p>}
+
             <div
                 ref={chartContainer}
                 style={{
                     border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    padding: '8px',
+                    borderRadius: 6,
+                    padding: 8,
                     background: '#fff',
                 }}
             />
 
-            <div style={{marginTop: '20px'}}>
+            <div style={{marginTop: 20}}>
                 <button onClick={() => (window.location.hash = '/analysis')}>
                     Go to CSV Analysis ↗
                 </button>
