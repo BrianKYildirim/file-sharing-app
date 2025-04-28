@@ -196,6 +196,7 @@ def get_market_data(symbol):
     try:
         resp = requests.get('https://www.alphavantage.co/query', params=params, timeout=10)
         data = resp.json()
+        current_app.logger.info(f"AV response for {symbol} @ {interval}: {data}")
         if key not in data:
             msg = data.get('Note') or data.get('Error Message') or 'No data'
             return error_response(msg, 404)
