@@ -20,21 +20,25 @@ export default function MarketDashboard() {
     const [showUsersModal, setShowUsersModal] = useState(false);
     const [currentSharedUsers, setCurrentSharedUsers] = useState([]);
 
+    const [tvReady, setTvReady] = useState(false);
     const containerRef = useRef();
 
     // 1) Load TradingView script once
     useEffect(() => {
-        if (!window.TradingView) {
-            const s = document.createElement('script');
-            s.src = 'https://s3.tradingview.com/tv.js';
-            s.async = true;
-            document.head.appendChild(s);
+        if (window.TradingView) {
+            setTvReady(true);
+            return;
         }
+        const s = document.createElement('script');
+        s.src = 'https://s3.tradingview.com/tv.js';
+        s.async = true;
+        s.onload = () => setTvReady(true);
+        document.head.appendChild(s);
     }, []);
 
     // 2) Re-create widget whenever symbol changes
     useEffect(() => {
-        if (!window.TradingView || !containerRef.current) return;
+        if (!tvReady || !containerRef.current) return;
         containerRef.current.innerHTML = '';
         new window.TradingView.widget({
             container_id: containerRef.current.id,
@@ -54,7 +58,7 @@ export default function MarketDashboard() {
             studies: [],
             locale: 'en',
         });
-    }, [symbol]);
+    }, [tvReady, symbol]);
 
     // 3) Fetch user + files on mount
     useEffect(() => {
