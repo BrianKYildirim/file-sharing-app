@@ -1,91 +1,69 @@
 // frontend/src/components/MarketDashboard.js
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import '../App.css';
 
 export default function MarketDashboard() {
     const watchlist = ['AAPL', 'NVDA', 'GOOG'];
-
-    // our “human” ↔ TradingView codes
-    const intervalMap = {
-        '1min': '1',
-        '5min': '5',
-        '15min': '15',
-        '30min': '30',
-        '60min': '60',
-        daily: 'D',
-        weekly: 'W',
-        monthly: 'M',
-    };
-    const styleMap = {
-        candlestick: '1',  // TradingView === Candles
-        line: '3',  // TradingView === Line
-    };
-
     const [symbol, setSymbol] = useState('AAPL');
-    const [interval, setInterval] = useState('1min');
-    const [type, setType] = useState('candlestick');
+    const containerRef = useRef();
 
-    const containerRef = useRef(null);
-
-    //  — load the TradingView script once —
+    // load the TradingView embed script once
     useEffect(() => {
-        if (window.TradingView) return;
-        const s = document.createElement('script');
-        s.src = 'https://s3.tradingview.com/tv.js';
-        s.async = true;
-        document.head.appendChild(s);
+        if (!window.TradingView) {
+            const s = document.createElement('script');
+            s.src = 'https://s3.tradingview.com/tv.js';
+            s.async = true;
+            document.head.appendChild(s);
+        }
     }, []);
 
-    //  — re-create the chart any time symbol/interval/type changes —
+    // recreate chart whenever symbol changes
     useEffect(() => {
         if (!window.TradingView || !containerRef.current) return;
-        // clear out old chart
-        containerRef.current.innerHTML = '';
+        containerRef.current.innerHTML = ''; // clear old
 
         new window.TradingView.widget({
             container_id: containerRef.current.id,
-            width: '100%',
-            height: 400,
-            symbol: `NASDAQ:${symbol}`,
-            interval: intervalMap[interval],
+            autosize: true,
+            symbol: `NASDAQ:${symbol}`,   // or whichever default exchange you like
+            interval: 'D',                  // daily by default; user can change inside the widget
             timezone: 'Etc/UTC',
             theme: 'Light',
-            style: styleMap[type],
+            style: '1',   // 1=candles, 3=line; user can toggle in toolbar
             toolbar_bg: '#f1f3f6',
-            allow_symbol_change: false,
-            withdateranges: true,
+            enable_publishing: false,
+            allow_symbol_change: true,  // <— turn this on
             hide_side_toolbar: false,
-            save_image: false,
+            show_popup_button: true,  // adds the ↗ icon to pop out full screen
+            withdateranges: true,
             details: true,
             studies: [],
             locale: 'en',
         });
-    }, [symbol, interval, type]);
+    }, [symbol]);
 
     return (
         <div className="dashboard container">
             <div className="dashboard-header">
                 <h2>Market Dashboard</h2>
-                <button
-                    className="logout-button"
-                    onClick={() => {
-                        localStorage.removeItem('access_token');
-                        window.location.hash = '/';
-                    }}
-                >
+                <button className="logout-button"
+                        onClick={() => {
+                            localStorage.removeItem('access_token');
+                            window.location.hash = '/';
+                        }}>
                     Logout
                 </button>
             </div>
 
             <div style={{marginBottom: 12}}>
                 <strong>Watchlist:</strong>{' '}
-                {watchlist.map((s) => (
+                {watchlist.map(t => (
                     <button
-                        key={s}
-                        onClick={() => setSymbol(s)}
-                        style={{marginRight: 8, fontWeight: s === symbol ? 'bold' : 'normal'}}
+                        key={t}
+                        onClick={() => setSymbol(t)}
+                        style={{marginRight: 8, fontWeight: t === symbol ? 'bold' : 'normal'}}
                     >
-                        {s}
+                        {t}
                     </button>
                 ))}
             </div>
@@ -94,14 +72,16 @@ export default function MarketDashboard() {
                 id="tv_chart_container"
                 ref={containerRef}
                 style={{
+                    width: '100%',
+                    height: '500px',
                     border: '1px solid #ddd',
                     borderRadius: 6,
-                    background: '#fff'
+                    background: '#fff',
                 }}
             />
 
             <div style={{marginTop: 20}}>
-                <button onClick={() => (window.location.hash = '/analysis')}>
+                <button onClick={() => window.location.hash = '/analysis'}>
                     Go to CSV Analysis ↗
                 </button>
             </div>
