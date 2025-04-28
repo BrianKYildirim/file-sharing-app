@@ -1,120 +1,65 @@
 // frontend/src/components/MarketDashboard.js
-
 import React, {useState, useEffect, useRef} from 'react';
-import {createChart, CrosshairMode} from 'lightweight-charts';
-import {API_BASE_URL} from '../config';
 import '../App.css';
 
 export default function MarketDashboard() {
-    const chartContainerRef = useRef();
-    const chartRef = useRef();
-    const seriesRef = useRef();
+    const watchlist = ['AAPL', 'SPY', 'GOOG'];
+
+    // our “human” ↔ TradingView codes
+    const intervalMap = {
+        '1min': '1',
+        '5min': '5',
+        '15min': '15',
+        '30min': '30',
+        '60min': '60',
+        daily: 'D',
+        weekly: 'W',
+        monthly: 'M',
+    };
+    const styleMap = {
+        candlestick: '1',  // TradingView === Candles
+        line: '3',  // TradingView === Line
+    };
 
     const [symbol, setSymbol] = useState('AAPL');
     const [interval, setInterval] = useState('1min');
-    const [type, setType] = useState('candlestick'); // or "line"
-    const [loading, setLoading] = useState(false);
+    const [type, setType] = useState('candlestick');
 
-    const watchlist = ['AAPL', 'SPY', 'GOOG'];
+    const containerRef = useRef(null);
 
-    // 1) Initialize the chart once
+    //  — load the TradingView script once —
     useEffect(() => {
-        const chart = createChart(chartContainerRef.current, {
-            width: chartContainerRef.current.clientWidth,
-            height: 400,
-            layout: {
-                backgroundColor: '#ffffff',
-                textColor: '#333',
-            },
-            grid: {
-                vertLines: {color: '#eee'},
-                horzLines: {color: '#eee'},
-            },
-            crosshair: {
-                mode: CrosshairMode.Normal,
-            },
-            rightPriceScale: {
-                borderColor: '#ccc',
-            },
-            timeScale: {
-                borderColor: '#ccc',
-                timeVisible: true,
-                secondsVisible: false,
-            },
-        });
-
-        chartRef.current = chart;
-
-        // handle resize
-        const handleResize = () => {
-            chart.applyOptions({width: chartContainerRef.current.clientWidth});
-        };
-        window.addEventListener('resize', handleResize);
-
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            chart.remove();
-        };
+        if (window.TradingView) return;
+        const s = document.createElement('script');
+        s.src = 'https://s3.tradingview.com/tv.js';
+        s.async = true;
+        document.head.appendChild(s);
     }, []);
 
-    // 2) Fetch & redraw whenever symbol, interval or type changes
+    //  — re-create the chart any time symbol/interval/type changes —
     useEffect(() => {
-        if (!chartRef.current) return;
-        setLoading(true);
+        if (!window.TradingView || !containerRef.current) return;
+        // clear out old chart
+        containerRef.current.innerHTML = '';
 
-        (async () => {
-            try {
-                const res = await fetch(
-                    `${API_BASE_URL}/market/${symbol}?interval=${interval}`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-                        },
-                    }
-                );
-                const payload = await res.json();
-                if (!res.ok) throw new Error(payload.msg || 'Fetch error');
-
-                // Convert the API data to UNIX‐seconds format
-                const raw = payload.map((d) => ({
-                    time: Math.floor(
-                        new Date(d.time.replace(' ', 'T') + 'Z').getTime() / 1000
-                    ),
-                    open: d.open,
-                    high: d.high,
-                    low: d.low,
-                    close: d.close,
-                }));
-
-                // remove old series if any
-                if (seriesRef.current) {
-                    chartRef.current.removeSeries(seriesRef.current);
-                }
-
-                // add new series
-                if (type === 'candlestick') {
-                    const s = chartRef.current.addCandlestickSeries();
-                    s.setData(raw);
-                    seriesRef.current = s;
-                } else {
-                    const s = chartRef.current.addLineSeries({
-                        priceLineVisible: false,
-                        lastValueVisible: true,
-                        priceScaleId: '',
-                    });
-                    s.setData(raw.map((d) => ({time: d.time, value: d.close})));
-                    seriesRef.current = s;
-                }
-
-                // auto-scale to fit:
-                chartRef.current.timeScale().fitContent();
-            } catch (err) {
-                console.error(err);
-                alert('Error fetching market data');
-            } finally {
-                setLoading(false);
-            }
-        })();
+        new window.TradingView.widget({
+            container_id: containerRef.current.id,
+            width: '100%',
+            height: 400,
+            symbol: `NASDAQ:${symbol}`,
+            interval: intervalMap[interval],
+            timezone: 'Etc/UTC',
+            theme: 'Light',
+            style: styleMap[type],
+            toolbar_bg: '#f1f3f6',
+            allow_symbol_change: false,
+            withdateranges: true,
+            hide_side_toolbar: false,
+            save_image: false,
+            details: true,
+            studies: [],
+            locale: 'en',
+        });
     }, [symbol, interval, type]);
 
     return (
@@ -134,45 +79,27 @@ export default function MarketDashboard() {
 
             <div style={{marginBottom: 12}}>
                 <strong>Watchlist:</strong>{' '}
-                {watchlist.map((sym) => (
+                {watchlist.map((s) => (
                     <button
-                        key={sym}
-                        onClick={() => setSymbol(sym)}
-                        style={{
-                            marginRight: 8,
-                            fontWeight: sym === symbol ? 'bold' : 'normal',
-                        }}
+                        key={s}
+                        onClick={() => setSymbol(s)}
+                        style={{marginRight: 8, fontWeight: s === symbol ? 'bold' : 'normal'}}
                     >
-                        {sym}
+                        {s}
                     </button>
                 ))}
             </div>
 
-            <div
-                style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginBottom: '12px',
-                }}
-            >
+            <div style={{display: 'flex', gap: 8, marginBottom: 12}}>
                 <label>
                     Interval:{' '}
                     <select
                         value={interval}
                         onChange={(e) => setInterval(e.target.value)}
                     >
-                        {[
-                            '1min',
-                            '5min',
-                            '15min',
-                            '30min',
-                            '60min',
-                            'daily',
-                            'weekly',
-                            'monthly',
-                        ].map((iv) => (
-                            <option key={iv} value={iv}>
-                                {iv}
+                        {Object.keys(intervalMap).map((k) => (
+                            <option key={k} value={k}>
+                                {k}
                             </option>
                         ))}
                     </select>
@@ -180,25 +107,27 @@ export default function MarketDashboard() {
 
                 <label>
                     Type:{' '}
-                    <select value={type} onChange={(e) => setType(e.target.value)}>
+                    <select
+                        value={type}
+                        onChange={(e) => setType(e.target.value)}
+                    >
                         <option value="candlestick">Candlestick</option>
                         <option value="line">Line</option>
                     </select>
                 </label>
             </div>
 
-            {loading && <p>Loading Chart…</p>}
             <div
-                ref={chartContainerRef}
+                id="tv_chart_container"
+                ref={containerRef}
                 style={{
                     border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    padding: '8px',
-                    background: '#fff',
+                    borderRadius: 6,
+                    background: '#fff'
                 }}
             />
 
-            <div style={{marginTop: '20px'}}>
+            <div style={{marginTop: 20}}>
                 <button onClick={() => (window.location.hash = '/analysis')}>
                     Go to CSV Analysis ↗
                 </button>
