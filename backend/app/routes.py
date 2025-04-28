@@ -165,41 +165,59 @@ def get_user():
 @jwt_required()
 def get_market_data(symbol):
     api_key = current_app.config['ALPHAVANTAGE_API_KEY']
-    url = 'https://www.alphavantage.co/query'
-    params = {
-        'function': 'TIME_SERIES_INTRADAY',
-        'symbol': symbol,
-        'interval': '1min',
-        'outputsize': 'compact',
-        'apikey': api_key,
+    interval = request.args.get('interval', '1min')
+
+    # pick function + JSON key
+    if interval in ('1min', '5min', '15min', '30min', '60min'):
+        fn = 'TIME_SERIES_INTRADAY'
+        key = 'Time Series ({})'.format(interval)
+        params = {
+            'function': fn,
+            'symbol': symbol,
+            'interval': interval,
+            'outputsize': 'compact',
+            'apikey': api_key,
         }
+    elif interval == 'daily':
+        fn = 'TIME_SERIES_DAILY'
+        key = 'Time Series (Daily)'
+        params = {'function': fn, 'symbol': symbol, 'apikey': api_key}
+    elif interval == 'weekly':
+        fn = 'TIME_SERIES_WEEKLY'
+        key = 'Weekly Time Series'
+        params = {'function': fn, 'symbol': symbol, 'apikey': api_key}
+    elif interval == 'monthly':
+        fn = 'TIME_SERIES_MONTHLY'
+        key = 'Monthly Time Series'
+        params = {'function': fn, 'symbol': symbol, 'apikey': api_key}
+    else:
+        return error_response(f"Unsupported interval: {interval}", 400)
 
     try:
-        resp = requests.get(url, params=params, timeout=10)
+        resp = requests.get('https://www.alphavantage.co/query', params=params, timeout=10)
         data = resp.json()
-
-        if 'Time Series (1min)' not in data:
-            msg = data.get('Note') or data.get('Error Message') or 'No intraday data found'
+        if key not in data:
+            msg = data.get('Note') or data.get('Error Message') or 'No data'
             return error_response(msg, 404)
 
-        ts_data = data['Time Series (1min)']
-        sorted_items = sorted(ts_data.items(), key=lambda x: x[0])
-
+        raw = data[key]
+        # sort ascending
+        items = sorted(raw.items(), key=lambda x: x[0])
         result = []
-        for timestamp, vals in sorted_items:
+        for ts, vals in items:
+            # for intraday ts is "YYYY-MM-DD HH:MM:SS", for daily it's "YYYY-MM-DD"
             result.append({
-                'time': timestamp,
-                'open': float(vals['1. open']),
-                'high': float(vals['2. high']),
-                'low': float(vals['3. low']),
-                'close': float(vals['4. close']),
-                'volume': int(vals['5. volume']),
+                'time': ts,
+                'open': float(vals.get('1. open') or vals.get('1. Open')),
+                'high': float(vals.get('2. high') or vals.get('2. High')),
+                'low': float(vals.get('3. low') or vals.get('3. Low')),
+                'close': float(vals.get('4. close') or vals.get('4. Close')),
+                'volume': int(vals.get('5. volume') or vals.get('5. Volume')),
             })
-
         return jsonify(result), 200
 
     except Exception as e:
-        current_app.logger.error(f"AlphaVantage error: {e}", exc_info=True)
+        current_app.logger.error("AlphaVantage error", exc_info=True)
         return error_response("Error fetching market data", 500)
 
 

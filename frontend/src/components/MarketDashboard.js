@@ -1,108 +1,84 @@
 // frontend/src/components/MarketDashboard.js
-
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
+import {createChart, CrosshairMode} from 'lightweight-charts';
 import {API_BASE_URL} from '../config';
 import '../App.css';
 
 export default function MarketDashboard() {
-    const token = localStorage.getItem('access_token');
-    const symbols = ['AAPL', 'SPY', 'GOOG'];
-    const [selected, setSelected] = useState(symbols[0]);
-    const [points, setPoints] = useState([]);      // { timeLabel, close }[]
+    const chartContainer = useRef();
+    const chartRef = useRef();
+    const seriesRef = useRef();
+
+    const [symbol, setSymbol] = useState('AAPL');
+    const [interval, setInterval] = useState('1min');
+    const [type, setType] = useState('candlestick'); // or "line"
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const watchlist = ['AAPL', 'SPY', 'GOOG'];
 
-    // Fetch intraday data when `selected` changes
+    // initialize chart once
     useEffect(() => {
-        if (!token) return;
+        const chart = createChart(chartContainer.current, {
+            width: chartContainer.current.clientWidth,
+            height: 400,
+            layout: {backgroundColor: '#ffffff', textColor: '#333'},
+            grid: {vertLines: {color: '#eee'}, horzLines: {color: '#eee'}},
+            crosshair: {mode: CrosshairMode.Normal},
+            rightPriceScale: {borderColor: '#ccc'},
+            timeScale: {borderColor: '#ccc', timeVisible: true, secondsVisible: false},
+        });
+        chartRef.current = chart;
+
+        // resize
+        const handleResize = () => chart.applyOptions({width: chartContainer.current.clientWidth});
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            chart.remove();
+        };
+    }, []);
+
+    // whenever symbol/interval/type changes, fetch & redraw
+    useEffect(() => {
+        if (!chartRef.current) return;
         setLoading(true);
-        setError('');
-        fetch(
-            `${API_BASE_URL}/market/${selected}?period=1d&interval=1m`,
-            {headers: {Authorization: `Bearer ${token}`}}
-        )
-            .then((res) =>
-                res.json().then((data) => ({ok: res.ok, data}))
-            )
+
+        fetch(`${API_BASE_URL}/market/${symbol}?interval=${interval}`, {
+            headers: {Authorization: `Bearer ${localStorage.getItem('access_token')}`},
+        })
+            .then(r => r.json().then(data => ({ok: r.ok, data})))
             .then(({ok, data}) => {
-                if (!ok) {
-                    setPoints([]);
-                    setError(data.msg || 'Error fetching data');
-                } else if (!Array.isArray(data) || data.length === 0) {
-                    setPoints([]);
-                    setError('No intraday data available.');
+                setLoading(false);
+                if (!ok) throw new Error(data.msg || 'Fetch error');
+
+                // remove old series
+                if (seriesRef.current) chartRef.current.removeSeries(seriesRef.current);
+
+                // add new series
+                if (type === 'candlestick') {
+                    const s = chartRef.current.addCandlestickSeries();
+                    s.setData(data);
+                    seriesRef.current = s;
+
                 } else {
-                    const mapped = data.map((d) => ({
-                        timeLabel: new Date(d.time).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }),
-                        close: d.close
-                    }));
-                    setPoints(mapped);
+                    const s = chartRef.current.addLineSeries({
+                        priceLineVisible: false,
+                        lastValueVisible: true,
+                        priceScaleId: '',
+                    });
+                    // line series wants time:number|time object; we can pass ISO strings
+                    s.setData(data.map(d => ({time: d.time, value: d.close})));
+                    seriesRef.current = s;
                 }
+
+                // fit to data
+                chartRef.current.timeScale().fitContent();
             })
-            .catch((err) => {
+            .catch(err => {
+                setLoading(false);
                 console.error(err);
-                setPoints([]);
-                setError('Network error');
-            })
-            .finally(() => setLoading(false));
-    }, [selected, token]);
-
-    // If not logged in, prompt to sign in
-    if (!token) {
-        return (
-            <div
-                className="dashboard container"
-                style={{padding: 20, textAlign: 'center'}}
-            >
-                <p style={{fontSize: '1.2rem', marginBottom: 20}}>
-                    You must be logged in to view the dashboard.
-                </p>
-                <button
-                    onClick={() => (window.location.hash = '/login')}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#0077cc',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        marginBottom: 10
-                    }}
-                >
-                    Log in here
-                </button>
-                <p>
-                    New user? <a href="#/signup">Register here</a>
-                </p>
-            </div>
-        );
-    }
-
-    // SVG dimensions
-    const svgWidth = 600;
-    const svgHeight = 300;
-    const margin = 40;
-    const gridLines = 5;
-
-    // Build the polyline
-    let polyline = '';
-    if (points.length > 1) {
-        const closes = points.map((p) => p.close);
-        const min = Math.min(...closes);
-        const max = Math.max(...closes);
-        const dx = (svgWidth - 2 * margin) / (points.length - 1);
-        const dy = (svgHeight - 2 * margin) / ((max - min) || 1);
-        polyline = points
-            .map((p, i) => {
-                const x = margin + dx * i;
-                const y = margin + (max - p.close) * dy;
-                return `${x},${y}`;
-            })
-            .join(' ');
-    }
+                alert('Error fetching market data');
+            });
+    }, [symbol, interval, type]);
 
     return (
         <div className="dashboard container">
@@ -119,15 +95,15 @@ export default function MarketDashboard() {
                 </button>
             </div>
 
-            <div style={{marginBottom: 20}}>
+            <div style={{marginBottom: '12px'}}>
                 <strong>Watchlist:</strong>{' '}
-                {symbols.map((sym) => (
+                {watchlist.map(sym => (
                     <button
                         key={sym}
-                        onClick={() => setSelected(sym)}
+                        onClick={() => setSymbol(sym)}
                         style={{
                             marginRight: 8,
-                            fontWeight: sym === selected ? 'bold' : 'normal'
+                            fontWeight: sym === symbol ? 'bold' : 'normal',
                         }}
                     >
                         {sym}
@@ -135,50 +111,36 @@ export default function MarketDashboard() {
                 ))}
             </div>
 
-            <div className="file-section">
-                <h3>{selected} Intraday Price</h3>
+            <div style={{display: 'flex', gap: '8px', marginBottom: '12px'}}>
+                <label>
+                    Interval:
+                    <select value={interval} onChange={e => setInterval(e.target.value)}>
+                        {['1min', '5min', '15min', '30min', '60min', 'daily', 'weekly', 'monthly']
+                            .map(iv => <option key={iv} value={iv}>{iv}</option>)}
+                    </select>
+                </label>
 
-                {loading ? (
-                    <p>Loading chart…</p>
-                ) : error ? (
-                    <p style={{color: 'red'}}>{error}</p>
-                ) : points.length < 2 ? (
-                    <p>No data to display.</p>
-                ) : (
-                    <svg
-                        width="100%"
-                        height="300"
-                        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                        preserveAspectRatio="none"
-                        style={{background: '#f9f9f9', border: '1px solid #ddd'}}
-                    >
-                        {/* horizontal grid */}
-                        {Array.from({length: gridLines}).map((_, i) => {
-                            const y =
-                                margin + ((svgHeight - 2 * margin) / (gridLines - 1)) * i;
-                            return (
-                                <line
-                                    key={i}
-                                    x1={margin}
-                                    y1={y}
-                                    x2={svgWidth - margin}
-                                    y2={y}
-                                    stroke="#eee"
-                                />
-                            );
-                        })}
-                        {/* price line */}
-                        <polyline
-                            fill="none"
-                            stroke="#0077cc"
-                            strokeWidth="2"
-                            points={polyline}
-                        />
-                    </svg>
-                )}
+                <label>
+                    Type:
+                    <select value={type} onChange={e => setType(e.target.value)}>
+                        <option value="candlestick">Candlestick</option>
+                        <option value="line">Line</option>
+                    </select>
+                </label>
             </div>
 
-            <div style={{marginTop: 30}}>
+            {loading && <p>Loading Chart…</p>}
+            <div
+                ref={chartContainer}
+                style={{
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    padding: '8px',
+                    background: '#fff',
+                }}
+            />
+
+            <div style={{marginTop: '20px'}}>
                 <button onClick={() => (window.location.hash = '/analysis')}>
                     Go to CSV Analysis ↗
                 </button>
