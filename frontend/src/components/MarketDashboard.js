@@ -221,7 +221,8 @@ export default function MarketDashboard() {
 
     return (
         <Suspense fallback={<div>Loading dashboard…</div>}>
-            <div style={{marginTop: 40}}>
+            <div className="dashboard container">
+                {/* ── Chart Header ───────────────────────────────────────── */}
                 <div className="dashboard-header">
                     <div>
                         <h2>Market Dashboard</h2>
