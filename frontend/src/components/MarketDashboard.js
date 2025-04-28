@@ -55,19 +55,6 @@ export default function MarketDashboard() {
                 </button>
             </div>
 
-            <div style={{marginBottom: 12}}>
-                <strong>Watchlist:</strong>{' '}
-                {watchlist.map(t => (
-                    <button
-                        key={t}
-                        onClick={() => setSymbol(t)}
-                        style={{marginRight: 8, fontWeight: t === symbol ? 'bold' : 'normal'}}
-                    >
-                        {t}
-                    </button>
-                ))}
-            </div>
-
             <div
                 id="tv_chart_container"
                 ref={containerRef}
