@@ -24,8 +24,9 @@ export default function App() {
     case '/verify':
       Page = VerifyAccount; break;
     case '/dashboard':
-    default:
       Page = MarketDashboard; break;
+    default:
+      Page = LandingPage; break;
   }
 
   return <Page />;
