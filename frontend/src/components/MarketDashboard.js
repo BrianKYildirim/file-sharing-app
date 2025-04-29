@@ -238,7 +238,7 @@ export default function MarketDashboard() {
                     </div>
                     <button className="logout-button" onClick={handleLogout}>Logout</button>
                 </div>
-
+                {/*
                 <div style={{marginBottom: 12}}>
                     <strong>Watchlist:</strong>{' '}
                     {watchlist.map(t => (
@@ -251,7 +251,7 @@ export default function MarketDashboard() {
                         </button>
                     ))}
                 </div>
-
+                */}
                 <div
                     id="tv_chart_container"
                     ref={containerRef}
