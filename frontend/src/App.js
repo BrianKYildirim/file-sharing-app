@@ -1,33 +1,24 @@
 // frontend/src/App.js
-import React, {useState, useEffect} from 'react';
-import LandingPage     from './components/LandingPage';
-import Login           from './components/Login';
-import Signup          from './components/Signup';
-import VerifyAccount   from './components/VerifyAccount';
-import MarketDashboard from './components/MarketDashboard';
 
-export default function App() {
-  const [path, setPath] = useState(window.location.hash.slice(1) || '/');
+import React from 'react';
+import {BrowserRouter as Router, Route, Routes} from 'react-router-dom';
+import LandingPage from './components/LandingPage';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import Dashboard from './components/Dashboard';
+import VerifyAccount from './components/VerifyAccount';
 
-  useEffect(() => {
-    const onHash = () => setPath(window.location.hash.slice(1) || '/');
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
-
-  let Page;
-  switch (path) {
-    case '/login':
-      Page = Login; break;
-    case '/signup':
-      Page = Signup; break;
-    case '/verify':
-      Page = VerifyAccount; break;
-    case '/dashboard':
-      Page = MarketDashboard; break;
-    default:
-      Page = LandingPage; break;
-  }
-
-  return <Page />;
+function App() {
+    return (
+        <Router>
+            <Routes>
+                <Route path="/" element={<LandingPage/>}/>
+                <Route path="/login" element={<Login/>}/>
+                <Route path="/signup" element={<Signup/>}/>
+                <Route path="/verify" element={<VerifyAccount/>}/> <Route path="/dashboard" element={<Dashboard/>}/>
+            </Routes>
+        </Router>
+    );
 }
+
+export default App;

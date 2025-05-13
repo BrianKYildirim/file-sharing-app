@@ -1,3 +1,4 @@
+
 # backend/app/routes.py
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
@@ -8,9 +9,6 @@ import uuid
 from datetime import timezone, timedelta, datetime
 import traceback
 from werkzeug.security import generate_password_hash
-import yfinance as yf
-import pandas as pd
-import requests
 
 api_bp = Blueprint('api_bp', __name__)
 
@@ -159,69 +157,6 @@ def get_user():
         return error_response('Invalid token identity', 400)
     user = User.query.get_or_404(user_id)
     return jsonify({'username': user.username, 'email': user.email}), 200
-
-
-@api_bp.route('/market/<string:symbol>', methods=['GET'])
-@jwt_required()
-def get_market_data(symbol):
-    api_key = current_app.config['ALPHAVANTAGE_API_KEY']
-    interval = request.args.get('interval', '1min')
-
-    # pick function + JSON key
-    if interval in ('1min', '5min', '15min', '30min', '60min'):
-        fn = 'TIME_SERIES_INTRADAY'
-        key = f'Time Series ({interval})'
-        # build the exact same query-string you tested in the browser:
-        url = (
-            f'https://www.alphavantage.co/query'
-            f'?function={fn}'
-            f'&symbol={symbol}'
-            f'&interval={interval}'
-            f'&outputsize=compact'
-            f'&apikey={api_key}'
-        )
-    elif interval == 'daily':
-        fn, key = 'TIME_SERIES_DAILY', 'Time Series (Daily)'
-        url = f'https://www.alphavantage.co/query?function={fn}&symbol={symbol}&apikey={api_key}'
-    elif interval == 'weekly':
-        fn, key = 'TIME_SERIES_WEEKLY', 'Weekly Time Series'
-        url = f'https://www.alphavantage.co/query?function={fn}&symbol={symbol}&apikey={api_key}'
-    elif interval == 'monthly':
-        fn, key = 'TIME_SERIES_MONTHLY', 'Monthly Time Series'
-        url = f'https://www.alphavantage.co/query?function={fn}&symbol={symbol}&apikey={api_key}'
-    else:
-        return error_response(f"Unsupported interval: {interval}", 400)
-
-    try:
-        # log it so you can verify in your Flask logs
-        current_app.logger.info(f"AlphaVantage URL → {url}")
-
-        resp = requests.get(url, timeout=10)
-        data = resp.json()
-
-        # if AV gives you a "Note" (rate-limit) or an error message:
-        if key not in data:
-            msg = data.get('Note') or data.get('Error Message') or 'No data'
-            current_app.logger.warning(f"AlphaVantage returned no \"{key}\" key, payload was: {data}")
-            return error_response(msg, 404)
-
-        # turn it into our uniform array:
-        raw = data[key]
-        items = sorted(raw.items(), key=lambda x: x[0])
-        out = [{
-            'time': ts,
-            'open': float(vals['1. open']),
-            'high': float(vals['2. high']),
-            'low': float(vals['3. low']),
-            'close': float(vals['4. close']),
-            'volume': int(vals['5. volume']),
-        } for ts, vals in items]
-
-        return jsonify(out), 200
-
-    except Exception as e:
-        current_app.logger.error("AlphaVantage exception", exc_info=True)
-        return error_response("Error fetching market data", 500)
 
 
 @api_bp.route('/upload', methods=['POST'])
