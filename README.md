@@ -31,7 +31,7 @@ A full-stack file-sharing application built with **Flask** (Python) on the backe
 
 ## Prerequisites
 
-- **Python 3.8+**  
+- **Python 3.7+**  
 - **Node.js & npm**
 - **PostgreSQL** database  
 - **AWS** account with an S3 bucket  
